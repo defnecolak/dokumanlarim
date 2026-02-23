@@ -1,0 +1,289 @@
+
+<div class="grid two" style="margin-top:20px;">
+  <div class="card">
+    <h2>Talep No: <span class="kbd"><%= reqItem.publicId || reqItem.id %></span></h2>
+    <div class="p">
+      <b>Tedarikçi:</b> <%= reqItem.vendor.name %><br/>
+      <b>Şirket:</b> <%= reqItem.vendor.company || '-' %><br/>
+      <b>E-posta:</b> <%= reqItem.vendor.email || '-' %><br/>
+      <b>Durum:</b> <span class="status <%= reqItem.status %>"><%= statusLabel(reqItem.status) %></span><br/>
+      <b>Son tarih:</b> <%= reqItem.dueDate || '-' %><br/>
+      <b>İlerleme:</b> <%= progress.done %>/<%= progress.required %> zorunlu · <%= progress.total %> toplam
+      <% if (health && (health.errors || health.warnings)) { %>
+        <br/>
+        <b>Kontroller:</b>
+        <% if (health.errors) { %><span class="pill err"><%= health.errors %> eksik</span><% } %>
+        <% if (health.warnings) { %><span class="pill warn"><%= health.warnings %> uyarı</span><% } %>
+      <% } %>
+    </div>
+
+    <div class="hr"></div>
+    <h2>Tedarikçi Linkleri</h2>
+    <div class="p">Tedarikçiye veya tedarikçi ekibine rol bazlı link gönderebilirsin.</div>
+
+    <h3 style="margin:10px 0 6px;">Ana link (genelde yetkili)</h3>
+    <textarea id="vendorLink" readonly style="min-height:70px;"><%= vendorLink %></textarea>
+    <div class="row">
+      <button class="btn" type="button" data-copy="vendorLink">Kopyala</button>
+      <a class="btn" href="<%= vendorLink %>" target="_blank" rel="noopener">Aç</a>
+    </div>
+
+    <div class="hr"></div>
+    <h2>Tedarikçi Ekibi</h2>
+
+    <% if (!participants || participants.length === 0) { %>
+      <div class="small">Bu talepte kayıtlı ek kişi yok.</div>
+    <% } else { %>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Rol</th>
+            <th>Kişi</th>
+            <th>Link</th>
+            <th>Son görülme</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% participants.forEach(p => { %>
+            <tr>
+              <td class="small">
+                <span class="badge"><%= (p.role || 'tedarikçi').toUpperCase() %></span>
+                <% if (p.canSubmit) { %><span class="badge">Gönder</span><% } %>
+              </td>
+              <td class="small">
+                <div><b><%= p.name || '-' %></b></div>
+                <div><%= p.email || '' %></div>
+              </td>
+              <td class="small">
+                <textarea id="plink_<%= p.id %>" readonly style="min-height:50px;"><%= p.link %></textarea>
+                <div class="row">
+                  <button class="btn" type="button" data-copy="plink_<%= p.id %>">Kopyala</button>
+                  <a class="btn" href="<%= p.link %>" target="_blank" rel="noopener">Aç</a>
+                </div>
+              </td>
+              <td class="small"><%= p.lastSeenAt ? p.lastSeenAt.slice(0,16).replace('T',' ') : '-' %></td>
+              <td class="small">
+                <% if (emailEnabled && p.email) { %>
+                  <form method="post" action="/app/requests/<%= reqItem.id %>/participants/<%= p.id %>/email" style="margin-bottom:8px;">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <button class="btn" type="submit">E-posta gönder</button>
+                    <% if (p.emailSentAt) { %><div class="small">Son: <%= (p.emailSentAt||'').slice(0,16).replace('T',' ') %></div><% } %>
+                  </form>
+                <% } %>
+
+                <% if (p.token !== reqItem.token) { %>
+                  <form method="post" action="/app/requests/<%= reqItem.id %>/participants/<%= p.id %>/delete" data-confirm="Kişi kaldırılsın mı?">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <button class="btn danger" type="submit">Kaldır</button>
+                  </form>
+                <% } else { %>
+                  <span class="small">Ana kişi</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+
+    <div class="hr"></div>
+    <h2>Ek kişi ekle</h2>
+    <form method="post" action="/app/requests/<%= reqItem.id %>/participants">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <label>Rol</label>
+      <select name="role">
+        <option value="mali_musavir">Mali Müşavir</option>
+        <option value="yetkili">Yetkili</option>
+        <option value="diger">Diğer</option>
+      </select>
+
+      <label>Ad Soyad</label>
+      <input name="name" placeholder="Örn: Ayşe Yılmaz">
+
+      <label>E-posta (opsiyonel)</label>
+      <input name="email" type="email" placeholder="ornek@mail.com">
+
+      <button class="btn" type="submit" style="margin-top:10px;">Link oluştur (+ e-posta varsa gönder)</button>
+    </form>
+
+    <div class="hr"></div>
+<h2>E-posta (Tedarikçi)</h2>
+<% if (!emailEnabled) { %>
+  <div class="small">SMTP ayarlı değil. E-posta gönderimi kapalı. <a href="/app/settings">Ayarlar</a> sayfasından SMTP'yi yapılandır.</div>
+<% } else if (!reqItem.vendor.email) { %>
+  <div class="small">Tedarikçi e-postası girilmemiş.</div>
+<% } else { %>
+  <div class="p small">Tedarikçi e-postası: <b><%= reqItem.vendor.email %></b></div>
+
+  <form method="post" action="/app/requests/<%= reqItem.id %>/email/invite" style="margin-top:8px;">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button class="btn" type="submit">Davet e-postası gönder</button>
+    <% if (reqItem.emailInviteSentAt) { %><span class="small">Son: <%= (reqItem.emailInviteSentAt||'').slice(0,16).replace('T',' ') %></span><% } %>
+  </form>
+
+  <form method="post" action="/app/requests/<%= reqItem.id %>/email/remind" style="margin-top:8px;">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button class="btn" type="submit">Hatırlatma gönder</button>
+    <% if (reqItem.emailReminderSentAt) { %><span class="small">Son: <%= (reqItem.emailReminderSentAt||'').slice(0,16).replace('T',' ') %></span><% } %>
+  </form>
+
+  <div class="small" style="margin-top:8px;">Otomatik hatırlatma (cron) açıksa, son tarihe yaklaşınca kendisi de gönderir.</div>
+<% } %>
+
+<div class="hr"></div>
+    <h2>Durum güncelle</h2>
+    <form method="post" action="/app/requests/<%= reqItem.id %>/status">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <select name="status">
+        <% statuses.forEach(s => { %>
+          <option value="<%= s %>" <%= reqItem.status===s?'selected':'' %>><%= statusLabel(s) %></option>
+        <% }) %>
+      </select>
+      <div style="margin-top:10px;">
+        <button class="btn primary" type="submit">Kaydet</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>İç not</h2>
+    <form method="post" action="/app/requests/<%= reqItem.id %>/note">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <textarea name="note" placeholder="Sadece ekip içi..."><%= reqItem.note || '' %></textarea>
+      <div style="margin-top:10px;">
+        <button class="btn primary" type="submit">Kaydet</button>
+      </div>
+    </form>
+
+    <div class="hr"></div>
+    <h2>İndir</h2>
+    <div class="row">
+      <a class="btn" href="/app/requests/<%= reqItem.id %>/download-all.zip">Tüm belgeleri ZIP indir</a>
+      <a class="btn" href="/app/requests/<%= reqItem.id %>/export.csv">CSV dışa aktar</a>
+    </div>
+
+    <div class="hr"></div>
+    <h2>Sil</h2>
+    <div class="small">Bu işlem dosyaları da kaldırır. Geri alınamaz.</div>
+    <form method="post" action="/app/requests/<%= reqItem.id %>/delete" data-confirm="Talep silinsin mi?">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="btn danger" type="submit">Talebi sil</button>
+    </form>
+  </div>
+</div>
+
+<div class="card" style="margin-top:18px;">
+  <h2>Belgeler</h2>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Belge</th>
+        <th>Zorunlu</th>
+        <th>Kontrol</th>
+        <th>İmza</th>
+        <th>Geçerlilik</th>
+        <th>Yükleyen</th>
+        <th>Yükleme</th>
+        <th>İndir</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% docsWithState.forEach(d => { const st = d._state; const u = st.u; %>
+        <tr>
+          <td><%= d.label %></td>
+          <td class="small"><%= d.required ? 'Evet' : 'Hayır' %></td>
+          <td class="small">
+            <% if (!st.uploaded) { %>
+              <span class="pill err">Eksik</span>
+            <% } else if (st.errors.length) { %>
+              <span class="pill err"><%= st.errors.join(' · ') %></span>
+            <% } else if (st.warnings.length) { %>
+              <span class="pill warn"><%= st.warnings.join(' · ') %></span>
+            <% } else { %>
+              <span class="pill ok">OK</span>
+            <% } %>
+          </td>
+
+          <td class="small">
+            <% if (!d.requireSignature) { %>
+              —
+            <% } else if (!u) { %>
+              —
+            <% } else { %>
+              <div>Tedarikçi: <b><%= u.signedConfirmed ? 'İmzalı' : 'İmzasız' %></b></div>
+              <div>Doğrulama: <b><%= u.signatureVerified ? 'Doğrulandı' : 'Bekliyor' %></b></div>
+              <form method="post" action="/app/requests/<%= reqItem.id %>/docs/<%= d.id %>/signature" style="margin-top:8px;">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="btn" type="submit"><%= u.signatureVerified ? 'Doğrulamayı kaldır' : 'İmzayı doğrula' %></button>
+              </form>
+            <% } %>
+          </td>
+
+          <td class="small">
+            <% if (!(d.issueDateRequired || d.expiryRequired)) { %>
+              —
+            <% } else if (!u) { %>
+              —
+            <% } else { %>
+              <% if (d.issueDateRequired) { %>
+                <div>Düzenleme: <b><%= u.issueDate || '-' %></b></div>
+              <% } %>
+
+              <% if (d.expiryRequired) { %>
+                <div>Geçerlilik: <b><%= u.expiryDate || '-' %></b></div>
+                <% if (st.expiryDaysLeft !== null) { %>
+                  <div class="small"><%= st.expiryDaysLeft %> gün kaldı</div>
+                <% } %>
+              <% } %>
+
+              <div style="margin-top:6px;">Tarih doğrulama: <b><%= u.datesVerified ? 'Doğrulandı' : 'Bekliyor' %></b></div>
+              <form method="post" action="/app/requests/<%= reqItem.id %>/docs/<%= d.id %>/dates" style="margin-top:8px;">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="btn" type="submit"><%= u.datesVerified ? 'Doğrulamayı kaldır' : 'Tarihleri doğrula' %></button>
+              </form>
+            <% } %>
+          </td>
+
+          <td class="small">
+            <% if (u && u.uploadedByRole) { %>
+              <%= u.uploadedByRole %> <%= u.uploadedByEmail ? ('(' + u.uploadedByEmail + ')') : '' %>
+            <% } else { %>
+              —
+            <% } %>
+          </td>
+
+          <td class="small"><%= u ? (u.uploadedAt||'').slice(0,16).replace('T',' ') : '-' %></td>
+
+          <td>
+            <% if (u) { %>
+              <a class="btn" href="/app/requests/<%= reqItem.id %>/download/<%= d.id %>">İndir</a>
+            <% } else { %>
+              <span class="small">—</span>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-top:18px;">
+  <h2>İşlem Geçmişi</h2>
+  <table class="table">
+    <thead>
+      <tr><th>Zaman</th><th>Aktör</th><th>İşlem</th><th>Detay</th></tr>
+    </thead>
+    <tbody>
+      <% audit.forEach(a => { %>
+        <tr>
+          <td class="small"><%= (a.at||'').slice(0,16).replace('T',' ') %></td>
+          <td class="small"><%= a.actor %></td>
+          <td class="small"><%= a.action %></td>
+          <td class="small"><%= a.detailText || '' %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>

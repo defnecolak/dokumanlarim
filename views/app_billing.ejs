@@ -1,0 +1,94 @@
+<div class="grid two" style="margin-top:20px;">
+  <div class="card">
+    <h2>Plan / Ödeme</h2>
+    <div class="p">
+  Mevcut plan: <b><%= plan.label %></b> (<%= plan.priceLabel %>)<br/>
+  Kullanıcı: <b><%= usage.usersCount %></b> / <b><%= plan.maxUsers %></b><br/>
+  Aktif talep: <b><%= usage.activeRequests %></b> / <b><%= plan.maxActiveRequests %></b><br/>
+  Talep başına belge: <b><%= plan.maxDocsPerRequest %></b><br/>
+  Storage: <span class="kbd"><%= storageProvider %></span>
+</div>
+
+    <div class="hr"></div>
+    <% if (!billingEnabled) { %>
+      <div class="flash err">
+        Ödeme kapalı. `.env` içinde <span class="kbd">BILLING_ENABLED=1</span> yapın ve iyzico anahtarlarını girin.
+      </div>
+    <% } %>
+
+    <h2>Paket seç</h2>
+    <form method="post" action="/app/billing/start">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Paket</label>
+      <select name="plan">
+        <option value="starter">Başlangıç</option>
+        <option value="team">Takım</option>
+        <option value="pro">Pro</option>
+      </select>
+
+      <div class="row">
+        <div>
+          <label>Ad</label>
+          <input name="firstName" required value="<%= user.firstName || '' %>">
+        </div>
+        <div>
+          <label>Soyad</label>
+          <input name="lastName" required value="<%= user.lastName || '' %>">
+        </div>
+      </div>
+      <label>E-posta</label>
+      <input name="email" type="email" required value="<%= user.email %>">
+
+      <label>Telefon (opsiyonel)</label>
+      <input name="gsmNumber" placeholder="+905..." />
+
+      <label>Adres (opsiyonel)</label>
+      <textarea name="address" placeholder="Fatura adresi..."></textarea>
+
+      <div class="hr"></div>
+      <button class="btn primary" type="submit" <%= billingEnabled ? '' : 'disabled' %>>iyzico ile devam et</button>
+    </form>
+
+    <% if (manualSecret) { %>
+      <div class="hr"></div>
+      <h2>Manual plan (test)</h2>
+      <div class="small">Prod'da kapat: BILLING_ADMIN_SECRET boş olsun.</div>
+      <form method="post" action="/app/billing/manual">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <label>Secret</label>
+        <input name="secret" required>
+        <label>Plan</label>
+        <select name="plan">
+          <option value="free">Ücretsiz</option>
+          <option value="starter">Başlangıç</option>
+          <option value="team">Takım</option>
+          <option value="pro">Pro</option>
+        </select>
+        <button class="btn" type="submit">Uygula</button>
+      </form>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <h2>Notlar</h2>
+    <div class="p">
+      iyzico callback'in çalışması için <span class="kbd">BASE_URL</span> dışarıdan erişilebilir olmalı.
+      Local test için tünel kullanabilirsin.
+    </div>
+    <div class="hr"></div>
+    <h2>İşlem geçmişi</h2>
+    <table class="table">
+      <thead><tr><th>Zaman</th><th>Plan</th><th>Durum</th></tr></thead>
+      <tbody>
+        <% bills.forEach(b => { %>
+          <tr>
+            <td class="small"><%= (b.updatedAt||'').slice(0,16).replace('T',' ') %></td>
+            <td class="small"><%= b.plan %></td>
+            <td class="small"><%= b.status %></td>
+          </tr>
+        <% }) %>
+        <% if (bills.length===0) { %><tr><td colspan="3" class="small">Kayıt yok.</td></tr><% } %>
+      </tbody>
+    </table>
+  </div>
+</div>

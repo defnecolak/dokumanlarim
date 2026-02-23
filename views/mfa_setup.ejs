@@ -1,0 +1,40 @@
+<div class="grid two">
+  <div class="card">
+    <h2>MFA kurulumu</h2>
+    <p class="p">Doğrulayıcı uygulamanda (Google Authenticator, Microsoft Authenticator, 1Password, Bitwarden, ...)
+      yeni bir hesap ekle ve aşağıdaki gizli anahtarı gir.</p>
+
+    <div class="badge" style="margin:10px 0">Gizli anahtar</div>
+    <div class="code" style="font-size:16px; user-select:all"><%= secret %></div>
+
+    <p class="p" style="margin-top:12px">
+      Bazı uygulamalar <i>otpauth</i> bağlantısı kabul eder:
+    </p>
+    <div class="code" style="font-size:12px; word-break:break-all; user-select:all"><%= otpauth %></div>
+
+    <hr style="border:0; border-top:1px solid var(--border); margin:16px 0">
+
+    <form method="post" action="/mfa/setup">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Uygulamadaki 6 haneli kod</label>
+      <input name="code" autocomplete="one-time-code" inputmode="numeric" placeholder="123456">
+      <div style="height:10px"></div>
+      <button class="btn primary" type="submit">MFA'yı etkinleştir</button>
+    </form>
+
+    <p class="p" style="margin-top:14px; opacity:.85">
+      Not: Kurulumdan sonra 1 kere gösterilen <b>yedek kodlar</b> üretilecek. Güvenli bir yere kaydet.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Neden bunu yapıyoruz?</h2>
+    <p class="p">
+      MFA, "şifre + bir şey" modelidir: şifre (bildiğin) + telefon/uygulama (sahip olduğun).
+      Bu, kimlik avı / credential stuffing gibi saldırıları çok daha pahalı hale getirir.
+    </p>
+    <p class="p">
+      Prod önerileri: WAF (Cloudflare/AWS WAF) + merkezi log/alert (Loki/Sentry/Datadog) + MFA.
+    </p>
+  </div>
+</div>
