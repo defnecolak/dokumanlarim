@@ -317,3 +317,6 @@ details[open] > summary:before{ content: '▾'; }
   line-height: 1.1;
   vertical-align: middle;
 }
+
+/* JS açıkken manuel upload butonunu gizle (dosya seçince otomatik yüklenir) */
+html.js .js-hide { display: none !important; }

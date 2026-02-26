@@ -74,7 +74,7 @@
           </td>
 
           <td>
-            <form method="post" enctype="multipart/form-data" action="/v/<%= accessToken %>/upload/<%= d.id %>">
+            <form method="post" enctype="multipart/form-data" action="/v/<%= accessToken %>/upload/<%= d.id %>" class="autoUploadForm" data-auto-upload="1">
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <div class="filePick">
                 <input id="file_<%= d.id %>" class="fileInput" type="file" name="file" required>
@@ -84,12 +84,12 @@
 
               <% if (d.issueDateRequired) { %>
                 <label class="small">Düzenleme tarihi</label>
-                <input type="date" name="issueDate" value="<%= u?.issueDate || '' %>">
+                <input type="date" name="issueDate" value="<%= u?.issueDate || '' %>" required>
               <% } %>
 
               <% if (d.expiryRequired) { %>
                 <label class="small">Geçerlilik bitiş tarihi</label>
-                <input type="date" name="expiryDate" value="<%= u?.expiryDate || '' %>">
+                <input type="date" name="expiryDate" value="<%= u?.expiryDate || '' %>" required>
               <% } %>
 
               <% if (d.requireSignature) { %>
@@ -99,7 +99,7 @@
                 </label>
               <% } %>
 
-              <button class="btn" type="submit" style="margin-top:10px;">Yükle</button>
+              <button class="btn js-hide" type="submit" style="margin-top:10px;">Yükle</button>
             </form>
 
             <% if (u && (d.issueDateRequired || d.expiryRequired || d.requireSignature)) { %>
@@ -108,12 +108,12 @@
 
                 <% if (d.issueDateRequired) { %>
                   <label class="small">Düzenleme tarihi</label>
-                  <input type="date" name="issueDate" value="<%= u.issueDate || '' %>">
+                  <input type="date" name="issueDate" value="<%= u.issueDate || '' %>" required>
                 <% } %>
 
                 <% if (d.expiryRequired) { %>
                   <label class="small">Geçerlilik bitiş tarihi</label>
-                  <input type="date" name="expiryDate" value="<%= u.expiryDate || '' %>">
+                  <input type="date" name="expiryDate" value="<%= u.expiryDate || '' %>" required>
                 <% } %>
 
                 <% if (d.requireSignature) { %>
