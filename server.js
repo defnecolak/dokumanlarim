@@ -233,6 +233,21 @@ app.use('/public', express.static(path.join(__dirname, 'public'), {
   },
 }));
 
+// Browsers request /favicon.ico from the site root. We keep assets under /public,
+// so serve a root favicon explicitly (or no-content if you haven't added one yet).
+app.get('/favicon.ico', (req, res) => {
+  try {
+    const fp = path.join(__dirname, 'public', 'favicon.ico');
+    if (fs.existsSync(fp)) {
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
+      return res.sendFile(fp);
+    }
+    return res.status(204).end();
+  } catch (e) {
+    return res.status(204).end();
+  }
+});
+
 // cache control for sensitive routes
 function noStore(req, res, next) {
   res.setHeader('Cache-Control', 'no-store');

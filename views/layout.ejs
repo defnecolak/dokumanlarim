@@ -4,9 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title><%= title %> — <%= appName %></title>
+  <link rel="icon" href="/favicon.ico" />
   <!-- Cache-buster so browser updates CSS/JS immediately after an upgrade -->
   <link rel="stylesheet" href="/public/styles.css?v=<%= appVersion %>" />
-  <% if (noindex) { %><meta name="robots" content="noindex,nofollow" /><% } %>
+  <% if (typeof noindex !== 'undefined' && noindex) { %><meta name="robots" content="noindex,nofollow" /><% } %>
 </head>
 <body>
   <div class="container">
