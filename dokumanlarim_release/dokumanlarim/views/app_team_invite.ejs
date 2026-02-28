@@ -1,0 +1,33 @@
+<div class="card" style="margin-top:20px;">
+  <h2>Kullanıcı davet et</h2>
+  <div class="p">
+    Plan limiti: <b><%= usersCount %></b> / <b><%= plan.maxUsers %></b><br/>
+    SMTP ayarlıysa e-posta gider; değilse davet linki ekranda gösterilir.
+  </div>
+
+  <form method="post" action="/app/team/invite">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>E-posta</label>
+    <input name="email" type="email" required placeholder="kisi@firma.com">
+
+    <label>Rol</label>
+    <select name="role">
+      <option value="member">member</option>
+      <option value="admin">admin</option>
+    </select>
+
+    <button class="btn primary" type="submit" style="margin-top:12px;">Davet oluştur</button>
+    <a class="btn" href="/app/team" style="margin-left:8px;">Geri</a>
+  </form>
+
+  <% if (inviteLink) { %>
+    <div class="hr"></div>
+    <h2>Davet linki</h2>
+    <div class="small">SMTP yoksa bu linki kopyalayıp gönder.</div>
+    <textarea id="inviteLink" readonly style="min-height:70px;"><%= inviteLink %></textarea>
+    <div class="row">
+      <button class="btn" type="button" data-copy="inviteLink">Kopyala</button>
+      <a class="btn" href="<%= inviteLink %>" target="_blank" rel="noopener">Aç</a>
+    </div>
+  <% } %>
+</div>

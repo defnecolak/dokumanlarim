@@ -1,0 +1,113 @@
+<div class="grid two" style="margin-top:20px;">
+  <div class="card">
+    <h2>Hesap</h2>
+    <div class="p">
+      Şirket: <b><%= tenant.name %></b><br/>
+      Kullanıcı: <b><%= user.email %></b> (<%= user.role %>)
+    </div>
+
+    <div class="hr"></div>
+    <h2>Şifre değiştir</h2>
+    <form method="post" action="/app/settings/password">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Mevcut şifre</label>
+      <input name="currentPassword" type="password" required>
+      <label>Yeni şifre</label>
+      <input name="newPassword" type="password" required minlength="8">
+      <button class="btn primary" type="submit" style="margin-top:10px;">Güncelle</button>
+    </form>
+
+    <div class="hr"></div>
+    <h2>Güvenlik</h2>
+    <div class="p">
+      MFA (Authenticator kodu) ve tenant güvenlik ayarları için
+      <a href="/app/security">Güvenlik Merkezi</a>.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Şirket ayarları</h2>
+
+    <% if (user.role !== 'owner') { %>
+      <div class="small">Şirket ayarlarını sadece <b>Owner</b> değiştirebilir.</div>
+    <% } else { %>
+      <form method="post" action="/app/settings/tenant">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+        <label>Şirket adı</label>
+        <input name="tenantName" value="<%= tenant.name %>" required>
+
+        <label>Bildirim e-postası (tedarikçi gönderince)</label>
+        <input name="notifyEmail" type="email" value="<%= tenant.notifyEmail || '' %>" placeholder="ornek@firma.com">
+
+        <div class="hr"></div>
+        <h2>Webhook / Slack / Teams</h2>
+
+        <label>Webhook URL (genel)</label>
+        <input name="webhookUrl" value="<%= tenant.webhookUrl || '' %>" placeholder="https://...">
+
+        <label>Webhook Secret (opsiyonel)</label>
+        <input name="webhookSecret" value="<%= tenant.webhookSecret || '' %>" placeholder="HMAC secret">
+
+        <label>Slack Incoming Webhook URL (opsiyonel)</label>
+        <input name="slackWebhookUrl" value="<%= tenant.slackWebhookUrl || '' %>" placeholder="https://hooks.slack.com/...">
+
+        <label>Teams Incoming Webhook URL (opsiyonel)</label>
+        <input name="teamsWebhookUrl" value="<%= tenant.teamsWebhookUrl || '' %>" placeholder="https://...">
+
+        <div class="hr"></div>
+        <h2>Bildirim olayları</h2>
+        <label style="display:flex;gap:10px;align-items:center;">
+          <input type="checkbox" name="notifyOnVendorSubmitted" <%= (tenant.notify?.onVendorSubmitted !== false) ? 'checked' : '' %> />
+          Tedarikçi “Gönder” yaptığında bildir
+        </label>
+
+        <label style="display:flex;gap:10px;align-items:center;margin-top:8px;">
+          <input type="checkbox" name="notifyOnVendorUpload" <%= (tenant.notify?.onVendorUpload === true) ? 'checked' : '' %> />
+          Tedarikçi her belge yüklediğinde bildir (daha gürültülü)
+        </label>
+
+        <label style="display:flex;gap:10px;align-items:center;margin-top:8px;">
+          <input type="checkbox" name="notifyOnStatusChange" <%= (tenant.notify?.onStatusChange !== false) ? 'checked' : '' %> />
+          Panelde durum değişince bildir
+        </label>
+
+        <label style="display:flex;gap:10px;align-items:center;margin-top:8px;">
+          <input type="checkbox" name="notifyOnRequestCreated" <%= (tenant.notify?.onRequestCreated === true) ? 'checked' : '' %> />
+          Talep oluşturulunca bildir
+        </label>
+
+        <button class="btn" type="submit" formaction="/app/settings/test-notifications" formmethod="post" style="margin-top:12px;">Test bildirimi gönder</button>
+
+
+        <div class="hr"></div>
+        <h2>Hatırlatma e-postası</h2>
+        <label style="display:flex;gap:10px;align-items:center;">
+          <input type="checkbox" name="remindersEnabled" <%= tenant.remindersEnabled ? 'checked' : '' %> />
+          Otomatik hatırlatma açık
+        </label>
+
+        <label>Hatırlatma günleri (son tarihe kaç gün kala)</label>
+        <input name="reminderDays" value="<%= (tenant.reminderDays || '') %>" placeholder="3,1">
+
+        <div class="small">Örn: <span class="kbd">3,1</span> → son tarihe 3 gün ve 1 gün kala mail gider (SMTP gerekiy﻿or).</div>
+
+        <button class="btn primary" type="submit" style="margin-top:12px;">Kaydet</button>
+      </form>
+    <% } %>
+
+    <div class="hr"></div>
+    <div class="hr"></div>
+    <h2>E-posta (SMTP)</h2>
+    <div class="p">Durum: <b><%= emailEnabled ? "Açık" : "Kapalı" %></b></div>
+    <div class="small">
+      SMTP ayarlamak için <span class="kbd">.env</span> içine <span class="kbd">SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS</span> girin.
+      Test göndermek için: <a href="/app/launch">Launch Kontrol</a>
+      veya CLI: <span class="kbd">npm run smtp:test</span>.
+    </div>
+    <h2>Yedek</h2>
+    <div class="p">Sunucuda yedek almak için:</div>
+    <pre class="kbd">npm run backup</pre>
+    <div class="small">Yedek dosyası: backups/ klasörüne düşer.</div>
+  </div>
+</div>

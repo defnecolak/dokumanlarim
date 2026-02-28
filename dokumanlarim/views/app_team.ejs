@@ -1,0 +1,68 @@
+<div class="grid two" style="margin-top:20px;">
+  <div class="card">
+    <h2>Ekip</h2>
+    <div class="p">
+      Şirket: <b><%= tenant.name %></b><br/>
+      Plan: <b><%= plan.label %></b><br/>
+      Kullanıcı limiti: <b><%= users.length %></b> / <b><%= plan.maxUsers %></b>
+    </div>
+
+    <div class="hr"></div>
+    <div class="row">
+      <a class="btn primary" href="/app/team/invite">Kullanıcı davet et</a>
+    </div>
+
+    <div class="hr"></div>
+    <h2>Üyeler</h2>
+    <table class="table">
+      <thead><tr><th>Ad</th><th>E-posta</th><th>Rol</th><th></th></tr></thead>
+      <tbody>
+        <% users.forEach(u => { %>
+          <tr>
+            <td class="small"><%= (u.firstName || '') + ' ' + (u.lastName || '') %></td>
+            <td class="small"><%= u.email %></td>
+            <td class="small"><%= u.role %></td>
+            <td>
+              <% if (u.id !== user.id && u.role !== 'owner') { %>
+                <form method="post" action="/app/team/remove/<%= u.id %>" data-confirm="Kullanıcı silinsin mi?" style="display:inline;">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="btn danger" type="submit">Kaldır</button>
+                </form>
+              <% } else { %>
+                <span class="small">—</span>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+        <% if (users.length === 0) { %><tr><td colspan="4" class="small">Kayıt yok.</td></tr><% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Bekleyen davetler</h2>
+    <div class="small">SMTP yoksa davet linkini buradan kopyalayabilirsin.</div>
+
+    <table class="table" style="margin-top:10px;">
+      <thead><tr><th>E-posta</th><th>Rol</th><th>Son</th><th></th></tr></thead>
+      <tbody>
+        <% invites.forEach(inv => { %>
+          <tr>
+            <td class="small"><%= inv.email %></td>
+            <td class="small"><%= inv.role %></td>
+            <td class="small"><%= (inv.createdAt||'').slice(0,16).replace('T',' ') %></td>
+            <td>
+              <button class="btn" type="button" data-copy="inv_<%= inv.id %>">Link</button>
+              <form method="post" action="/app/team/revoke/<%= inv.id %>" data-confirm="Davet iptal edilsin mi?" style="display:inline;">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="btn danger" type="submit">İptal</button>
+              </form>
+              <textarea id="inv_<%= inv.id %>" readonly style="position:absolute;left:-9999px;top:-9999px;"><%= inv.link %></textarea>
+            </td>
+          </tr>
+        <% }) %>
+        <% if (invites.length === 0) { %><tr><td colspan="4" class="small">Bekleyen davet yok.</td></tr><% } %>
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -1,0 +1,48 @@
+<div class="grid two" style="margin-top:20px;">
+  <div class="card">
+    <h2>Şirket hesabı oluştur</h2>
+    <form method="post" action="/signup">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Şirket adı</label>
+      <input name="tenantName" required placeholder="Örn: Acme Ltd." value="<%= (draft && draft.tenantName) ? draft.tenantName : '' %>" />
+      <div class="row">
+        <div>
+          <label>Ad</label>
+          <input name="firstName" required placeholder="Ad" value="<%= (draft && draft.firstName) ? draft.firstName : '' %>" />
+        </div>
+        <div>
+          <label>Soyad</label>
+          <input name="lastName" required placeholder="Soyad" value="<%= (draft && draft.lastName) ? draft.lastName : '' %>" />
+        </div>
+      </div>
+      <label>E-posta</label>
+      <input name="email" type="email" required placeholder="ornek@firma.com" value="<%= (draft && draft.email) ? draft.email : '' %>" />
+      <label>Şifre</label>
+      <input name="password" type="password" required minlength="8" />
+      <div class="small">En az 8 karakter.</div>
+
+      <% if (captcha && captcha.mode === 'turnstile') { %>
+        <div class="hr"></div>
+        <label>İnsan doğrulaması</label>
+        <div class="turnstile">
+          <div class="cf-turnstile" data-sitekey="<%= captcha.turnstileSiteKey %>"></div>
+        </div>
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+      <% } else if (captcha && captcha.mode === 'math') { %>
+        <div class="hr"></div>
+        <label>İnsan doğrulaması</label>
+        <div class="small">Soru: <b><%= captcha.mathQuestion %></b></div>
+        <input type="hidden" name="captchaToken" value="<%= captcha.captchaToken || '' %>" />
+        <input name="captchaAnswer" required placeholder="Cevap" />
+      <% } %>
+
+      <div class="hr"></div>
+      <button class="btn primary" type="submit">Hesap oluştur</button>
+      <a class="btn" href="/login">Zaten hesabım var</a>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Plan</h2>
+    <div class="p">Ücretsiz plan ile başlayabilirsin. İstersen sonra iyzico ile yükseltirsin.</div>
+  </div>
+</div>

@@ -1,0 +1,15 @@
+{
+  "meta": {
+    "version": "1.6.0",
+    "createdAt": "2026-02-16T17:50:53.324906Z",
+    "updatedAt": "2026-02-17T07:19:39.859278Z"
+  },
+  "tenants": [],
+  "users": [],
+  "requests": [],
+  "audit": [],
+  "billing": [],
+  "invites": [],
+  "files": [],
+  "templates": []
+}

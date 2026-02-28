@@ -1,0 +1,84 @@
+<div class="grid two">
+  <div class="card">
+    <h2>Hesap güvenliği</h2>
+
+    <div style="margin:10px 0 14px">
+      <div class="badge" style="display:inline-block; margin-right:8px">MFA</div>
+      <% if (user.mfaEnabled) { %>
+        <span class="badge" style="background:rgba(6, 182, 212, .18); border-color:rgba(6,182,212,.35)">Açık</span>
+      <% } else { %>
+        <span class="badge" style="background:rgba(239, 68, 68, .12); border-color:rgba(239,68,68,.3)">Kapalı</span>
+      <% } %>
+    </div>
+
+    <% if (!user.mfaEnabled) { %>
+      <p class="p">MFA (çok faktörlü doğrulama), şifre sızsa bile hesabının ele geçirilmesini çok zorlaştırır.</p>
+      <form method="post" action="/app/security/mfa/start">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="btn primary" type="submit">MFA'yı etkinleştir</button>
+      </form>
+    <% } else { %>
+      <p class="p">MFA açık. Yedek kodlarını güvenli bir yerde sakla.</p>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px">
+        <form method="post" action="/app/security/mfa/backup-regenerate">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button class="btn" type="submit">Yeni yedek kod üret</button>
+        </form>
+      </div>
+
+      <hr class="sep">
+      <h3>MFA kapat</h3>
+      <p class="p">Güvenlik için MFA'yı kapatmak istersen, şifreni ve doğrulama kodunu doğrulaman gerekir.</p>
+
+      <form method="post" action="/app/security/mfa/disable">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="field">
+          <label>Şifre</label>
+          <input class="input" type="password" name="password" autocomplete="current-password" required>
+        </div>
+        <div class="field">
+          <label>Kod (6 haneli TOTP veya yedek kod)</label>
+          <input class="input" name="code" placeholder="123456 veya XXXX-XXXX-XXXX" required>
+        </div>
+        <button class="btn danger" type="submit">MFA'yı kapat</button>
+      </form>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <h2>Tenant güvenliği</h2>
+    <p class="p">Bu ayarlar, şirketindeki herkesin oturum açma güvenliğini etkiler.</p>
+
+    <div style="margin:10px 0 14px">
+      <div class="badge" style="display:inline-block; margin-right:8px">MFA zorunlu</div>
+      <% if (tenant.security && tenant.security.requireMfa) { %>
+        <span class="badge" style="background:rgba(6, 182, 212, .18); border-color:rgba(6,182,212,.35)">Açık</span>
+      <% } else { %>
+        <span class="badge">Kapalı</span>
+      <% } %>
+    </div>
+
+    <% if (user.role === 'owner') { %>
+      <form method="post" action="/app/security/tenant">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <label class="check" style="margin:12px 0">
+          <input type="checkbox" name="requireMfa" value="1" <%= tenant.security && tenant.security.requireMfa ? 'checked' : '' %>>
+          <span>Şirketimde MFA zorunlu olsun</span>
+        </label>
+        <button class="btn" type="submit">Kaydet</button>
+      </form>
+      <p class="p" style="margin-top:10px">Not: MFA zorunlu olunca, MFA kurmadan hiçbir kullanıcı panele giremez.</p>
+    <% } else { %>
+      <p class="p">Bu ayarı sadece <b>owner</b> değiştirebilir.</p>
+    <% } %>
+
+    <hr class="sep">
+    <h3>Prod'da en yüksek kaldıraç</h3>
+    <ul class="list">
+      <li><b>WAF</b> (Cloudflare / AWS WAF): Bot & rate-limit, country/IP blok, managed OWASP rules.</li>
+      <li><b>Merkezi log</b>: JSON log → Loki/ELK/Datadog. Şüpheli olaylar için alarm.</li>
+      <li><b>Backup</b>: günlük snapshot + şifreli offsite yedek + test restore.</li>
+    </ul>
+  </div>
+</div>

@@ -1,0 +1,179 @@
+
+<div class="grid two" style="margin-top:20px;">
+  <div class="card">
+    <h2>Belge Yükleme</h2>
+    <div class="p">
+      Merhaba <b><%= reqItem.vendor.name %></b>, lütfen aşağıdaki belgeleri yükleyiniz.<br/>
+      <% if (reqItem.dueDate) { %>Son tarih: <b><%= reqItem.dueDate %></b><br/><% } %>
+      Durum: <span class="status <%= reqItem.status %>"><%= statusLabel(reqItem.status) %></span><br/>
+      <% if (participant) { %>
+        Bu link: <span class="badge"><%= (participant.role || 'tedarikçi').toUpperCase() %></span>
+        <% if (participant.email) { %><span class="small">(<%= participant.email %>)</span><% } %>
+      <% } %>
+    </div>
+
+    <% if (reqItem.vendorMessage) { %>
+      <div class="flash ok"><b>Mesaj:</b> <%= reqItem.vendorMessage %></div>
+    <% } %>
+
+    <div class="hr"></div>
+
+    <div class="row" style="justify-content:space-between;flex-wrap:wrap;">
+      <h2>Belgeler</h2>
+      <div class="small"><b>İlerleme:</b> <%= progress.done %>/<%= progress.required %> zorunlu</div>
+    </div>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Belge</th>
+          <th>Zorunlu</th>
+          <th>Durum</th>
+          <th>Bilgiler</th>
+          <th>Yükle / Güncelle</th>
+        </tr>
+      </thead>
+      <tbody>
+      <% docsWithState.forEach(d => { const st = d._state; const u = st.u; %>
+        <tr>
+          <td>
+            <div><b><%= d.label %></b></div>
+            <div class="small">
+              <% if (d.requireSignature) { %><span class="badge">İmza</span><% } %>
+              <% if (d.issueDateRequired) { %><span class="badge">Düzenleme tarihi</span><% } %>
+              <% if (d.expiryRequired) { %><span class="badge">Geçerlilik</span><% } %>
+            </div>
+          </td>
+
+          <td class="small"><%= d.required ? 'Evet' : 'Hayır' %></td>
+
+          <td class="small">
+            <% if (!st.uploaded) { %>
+              <span class="pill err">Eksik</span>
+            <% } else if (st.errors.length) { %>
+              <span class="pill err"><%= st.errors.join(' · ') %></span>
+            <% } else if (st.warnings.length) { %>
+              <span class="pill warn"><%= st.warnings.join(' · ') %></span>
+            <% } else { %>
+              <span class="pill ok">OK</span>
+            <% } %>
+          </td>
+
+          <td class="small">
+            <% if (u) { %>
+              <div>Dosya: <%= u.originalName %></div>
+              <div>Yükleme: <%= (u.uploadedAt||'').slice(0,16).replace('T',' ') %></div>
+              <% if (u.uploadedByRole) { %><div>Yükleyen: <%= u.uploadedByRole %> <%= u.uploadedByEmail ? ('(' + u.uploadedByEmail + ')') : '' %></div><% } %>
+
+              <% if (d.issueDateRequired) { %><div>Düzenleme: <b><%= u.issueDate || '-' %></b></div><% } %>
+              <% if (d.expiryRequired) { %><div>Geçerlilik: <b><%= u.expiryDate || '-' %></b></div><% } %>
+              <% if (d.requireSignature) { %><div>İmzalı: <b><%= u.signedConfirmed ? 'Evet' : 'Hayır' %></b></div><% } %>
+            <% } else { %>
+              <span class="small">—</span>
+            <% } %>
+          </td>
+
+          <td>
+            <form method="post" enctype="multipart/form-data" action="/v/<%= accessToken %>/upload/<%= d.id %>" class="autoUploadForm" data-auto-upload="1">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <div class="filePick">
+                <input id="file_<%= d.id %>" class="fileInput" type="file" name="file" accept="<%= uploadAccept %>" data-allowed-ext="<%= uploadAllowedExtCsv %>" data-doc-label="<%= d.label %>" required>
+                <label class="btn fileBtn" for="file_<%= d.id %>">Dosya Seç</label>
+                <span class="fileChosen" data-for="file_<%= d.id %>" aria-hidden="true"></span>
+              </div>
+
+              <% if (d.issueDateRequired) { %>
+                <label class="small">Düzenleme tarihi</label>
+                <input type="date" name="issueDate" value="<%= u?.issueDate || '' %>" required>
+              <% } %>
+
+              <% if (d.expiryRequired) { %>
+                <label class="small">Geçerlilik bitiş tarihi</label>
+                <input type="date" name="expiryDate" value="<%= u?.expiryDate || '' %>" required>
+              <% } %>
+
+              <% if (d.requireSignature) { %>
+                <label class="small" style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+                  <input type="checkbox" name="signed" <%= u?.signedConfirmed ? 'checked' : '' %> style="width:auto;">
+                  Belge imzalı (ıslak/e-imza)
+                </label>
+              <% } %>
+
+              <button class="btn js-hide" type="submit" style="margin-top:10px;">Yükle</button>
+            </form>
+
+            <% if (u && (d.issueDateRequired || d.expiryRequired || d.requireSignature)) { %>
+              <form method="post" action="/v/<%= accessToken %>/meta/<%= d.id %>" style="margin-top:10px;">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+                <% if (d.issueDateRequired) { %>
+                  <label class="small">Düzenleme tarihi</label>
+                  <input type="date" name="issueDate" value="<%= u.issueDate || '' %>" required>
+                <% } %>
+
+                <% if (d.expiryRequired) { %>
+                  <label class="small">Geçerlilik bitiş tarihi</label>
+                  <input type="date" name="expiryDate" value="<%= u.expiryDate || '' %>" required>
+                <% } %>
+
+                <% if (d.requireSignature) { %>
+                  <label class="small" style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+                    <input type="checkbox" name="signed" <%= u.signedConfirmed ? 'checked' : '' %> style="width:auto;">
+                    Belge imzalı
+                  </label>
+                <% } %>
+
+                <button class="btn ghost" type="submit" style="margin-top:10px;">Bilgileri Kaydet</button>
+              </form>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+
+    <div class="hr"></div>
+
+    <form method="post" action="/v/<%= accessToken %>/submit">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="btn primary" type="submit" <%= canSubmit ? '' : 'disabled' %>>
+        Belgeleri Gönder
+      </button>
+
+      <% if (participant && participant.canSubmit === false) { %>
+        <div class="small">Bu link ile <b>Gönder</b> yapılamaz. Yetkili linkini kullanın.</div>
+      <% } else if (!canSubmit) { %>
+        <div class="small">Zorunlu belgeler + imza/geçerlilik bilgileri tamamlanmadan gönderemezsiniz.</div>
+      <% } %>
+    </form>
+
+    <% if (emailEnabled && participant && participant.canSubmit !== false) { %>
+      <div class="hr"></div>
+      <h2>Ek kişi davet et</h2>
+      <div class="small">Örn: Mali müşavir veya yetkili kişi için ayrı link oluştur.</div>
+      <form method="post" action="/v/<%= accessToken %>/participants/invite" style="margin-top:10px;">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <label>Rol</label>
+        <select name="role">
+          <option value="mali_musavir">Mali Müşavir</option>
+          <option value="yetkili">Yetkili</option>
+          <option value="diger">Diğer</option>
+        </select>
+        <label>Ad Soyad</label>
+        <input name="name" placeholder="Örn: Mehmet Kaya">
+        <label>E-posta</label>
+        <input name="email" type="email" placeholder="ornek@mail.com">
+        <button class="btn" type="submit" style="margin-top:10px;">Davet linki oluştur + e-posta gönder</button>
+      </form>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <h2>Gizlilik</h2>
+    <div class="p">
+      Yüklediğiniz belgeler sadece ilgili şirket tarafından görüntülenir. Detay: <a href="/legal/privacy" target="_blank">Gizlilik Politikası</a>.
+    </div>
+    <div class="hr"></div>
+    <div class="small">Teknik destek: <%= supportEmail %></div>
+  </div>
+</div>
