@@ -36,6 +36,18 @@ const {
   timingSafeEqualStr,
 } = require('./lib/mfa');
 
+
+
+function maskUrl(url) {
+  if (!url) return url;
+  // Mask vendor tokens in URLs like /v/<token>
+  return String(url).replace(/\/v\/([A-Za-z0-9_-]{12,})/g, (m, token) => {
+    const start = token.slice(0, 4);
+    const end = token.slice(-4);
+    return `/v/${start}…${end}`;
+  });
+}
+
 const app = express();
 
 // --- Config / Safety ---
@@ -56,9 +68,13 @@ const LOGIN_LOCK_MINUTES = parseInt(process.env.LOGIN_LOCK_MINUTES || '30', 10);
 // (We skip CSP for Iyzico checkout pages because their embed snippet can include inline JS.)
 const CSP_ENABLED = String(process.env.CSP_ENABLED || '1') === '1';
 const CSP_REPORT_ONLY = String(process.env.CSP_REPORT_ONLY || '0') === '1';
-const TRUST_PROXY = String(process.env.TRUST_PROXY || '0') === '1';
-const FORCE_HTTPS = String(process.env.FORCE_HTTPS || '0') === '1';
-const COOKIE_SECURE = String(process.env.COOKIE_SECURE || '0') === '1';
+const TRUST_PROXY = String(process.env.TRUST_PROXY || (IS_PROD ? '1' : '0')) === '1';
+const FORCE_HTTPS = String(process.env.FORCE_HTTPS || (IS_PROD ? '1' : '0')) === '1';
+const COOKIE_SECURE = String(process.env.COOKIE_SECURE || (IS_PROD ? '1' : '0')) === '1';
+const COOKIE_DOMAIN = (process.env.COOKIE_DOMAIN || '').trim();
+const ENABLE_CSV_EXPORT = String(process.env.ENABLE_CSV_EXPORT || '0') === '1';
+const ENABLE_LAUNCH_CENTER = String(process.env.ENABLE_LAUNCH_CENTER || '0') === '1';
+const COOKIE_SAMESITE = (process.env.COOKIE_SAMESITE || 'lax').trim();
 
 const APP_NAME = process.env.APP_NAME || 'Dökümanlarım';
 // Public launch default support email
@@ -89,6 +105,23 @@ const APP_VERSION = require('./package.json').version;
 
 const FILE_MAX_MB = parseFloat(process.env.FILE_MAX_MB || '15');
 const MAX_BYTES = Math.floor(FILE_MAX_MB * 1024 * 1024);
+
+// Upload allow-list (frontend accept + backend validation)
+const UPLOAD_ALLOWED_EXT = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.doc', '.docx', '.xls', '.xlsx', '.txt'];
+const UPLOAD_ALLOWED_MIME = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain',
+];
+// Used in <input accept=...>. Extensions work best across OS file pickers.
+const UPLOAD_ACCEPT_ATTR = UPLOAD_ALLOWED_EXT.join(',');
+
 
 if (NODE_ENV === 'production') {
   // In production, require a strong session signing key.
@@ -130,6 +163,8 @@ app.use(globalLimiter);
 
 app.use(helmet({
   contentSecurityPolicy: false, // iyzico checkout html/script için
+  // Token tabanlı linkler (/v/...) üçüncü taraf sitelere referer olarak sızmasın.
+  referrerPolicy: { policy: 'same-origin' },
 }));
 
 // Basic CSP for most HTML pages (skip Iyzico checkout pages that include inline JS).
@@ -190,6 +225,13 @@ app.use((req, res, next) => {
   res.locals.appVersion = APP_VERSION;
   res.locals.supportEmail = SUPPORT_EMAIL;
   res.locals.cspNonce = res.locals.cspNonce || '';
+  res.locals.uploadAccept = UPLOAD_ACCEPT_ATTR;
+  res.locals.uploadAllowedExtCsv = UPLOAD_ALLOWED_EXT.join(',');
+  res.locals.maskUrl = maskUrl;
+
+  // Prevent leaking tokenized URLs via the Referer header to any 3rd-party requests.
+  res.setHeader('Referrer-Policy', 'no-referrer');
+
   next();
 });
 
@@ -203,8 +245,9 @@ app.use(cookieSession({
   })(),
   httpOnly: true,
   secure: COOKIE_SECURE,
-  sameSite: 'lax',
-  maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+  sameSite: COOKIE_SAMESITE,
+  domain: COOKIE_DOMAIN || undefined,
+  maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
 }));
 
 // optional https redirect
@@ -233,14 +276,17 @@ app.use('/public', express.static(path.join(__dirname, 'public'), {
   },
 }));
 
-// Browsers request /favicon.ico from the site root. We keep assets under /public,
-// so serve a root favicon explicitly (or no-content if you haven't added one yet).
+// Browsers request /favicon.ico from the site root. To avoid broken / invalid ico files
+// causing noisy 500s in production, serve a tiny built-in SVG icon when needed.
 app.get('/favicon.ico', (req, res) => {
   try {
-    const fp = path.join(__dirname, 'public', 'favicon.ico');
-    if (fs.existsSync(fp)) {
-      res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
-      return res.sendFile(fp);
+    const svgPath = path.join(__dirname, 'public', 'favicon.svg');
+    const icoPath = path.join(__dirname, 'public', 'favicon.ico');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    if (fs.existsSync(icoPath)) return res.sendFile(icoPath);
+    if (fs.existsSync(svgPath)) {
+      res.type('image/svg+xml');
+      return res.sendFile(svgPath);
     }
     return res.status(204).end();
   } catch (e) {
@@ -459,6 +505,10 @@ function flash(req, type, message) {
   req.session.flash = { type, message };
 }
 
+function addFlash(req, message, type = 'ok') {
+  flash(req, type, message);
+}
+
 function consumeFlash(req) {
   const f = req.session.flash;
   delete req.session.flash;
@@ -488,6 +538,15 @@ function escapeHtml(s) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+
+function wantsJson(req) {
+  const accept = String((req.headers && req.headers.accept) || '');
+  if (accept.includes('application/json')) return true;
+  const xrw = String((req.headers && req.headers['x-requested-with']) || '');
+  if (xrw.toLowerCase() === 'xmlhttprequest') return true;
+  return false;
 }
 
 function isTurnstileEnabled() {
@@ -681,23 +740,21 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     // Not: Bazı tarayıcılar/OS'ler dosyayı "application/octet-stream" veya farklı PDF mime'ları ile
     // gönderebiliyor. Bu yüzden filtre biraz toleranslı; asıl güvenlik "magic bytes" kontrolünde.
-    const allowedMimes = [
-      'application/pdf',
+    const allowedMimes = new Set([
+      ...UPLOAD_ALLOWED_MIME,
+      // Tolerate a few common variants some clients send
       'application/x-pdf',
       'application/octet-stream',
-      'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'text/plain',
-    ];
-    const allowedExt = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.doc', '.docx', '.xls', '.xlsx', '.txt'];
+      'image/jpg',
+    ].map((m) => String(m).toLowerCase()));
+
+    const allowedExt = new Set(UPLOAD_ALLOWED_EXT.map((e) => String(e).toLowerCase()));
 
     const ext = (path.extname(file.originalname || '') || '').toLowerCase();
     const mime = (file.mimetype || '').toLowerCase();
 
-    const ok = allowedMimes.includes(mime) || allowedExt.includes(ext);
+    const ok = allowedMimes.has(mime) || allowedExt.has(ext);
+
     if (ok) return cb(null, true);
 
     const err = new Error('Bu dosya türüne izin verilmiyor. İzinli türler: PDF, JPG, PNG, WEBP, DOC/DOCX, XLS/XLSX, TXT.');
@@ -1845,6 +1902,17 @@ app.get('/v/:token', vendorLimiter, loadVendorRequest, noStore, (req, res) => {
 
 // NOTE: Multipart (multer) must run BEFORE CSRF verification so req.body._csrf exists.
 // Otherwise vendor uploads can fail with "CSRF token hatalı.".
+app.get('/v/:token/upload/:docId', vendorLimiter, loadVendorRequest, (req, res) => {
+  // Bu endpoint sadece POST (multipart) ile kullanılmalı.
+  addFlash(req, 'Dosya yüklemek için önce ilgili satırdan dosya seçmelisin.', 'err');
+  return res.redirect(`/v/${req.params.token}`);
+});
+
+app.get('/v/:token/upload', vendorLimiter, loadVendorRequest, (req, res) => {
+  addFlash(req, 'Dosya yüklemek için önce ilgili satırdan dosya seçmelisin.', 'err');
+  return res.redirect(`/v/${req.params.token}`);
+});
+
 app.post('/v/:token/upload/:docId', vendorLimiter, loadVendorRequest, upload.single('file'), verifyCsrf, async (req, res) => {
   const reqItem = req.vendorRequest;
   const accessToken = req.vendorAccessToken;
@@ -1856,14 +1924,18 @@ app.post('/v/:token/upload/:docId', vendorLimiter, loadVendorRequest, upload.sin
 
   const file = req.file;
   if (!file) {
-    flash(req, 'err', 'Dosya seçilmedi.');
+    const payload = { ok: false, error: 'Dosya seçilmedi.' };
+    if (wantsJson(req) || String(req.get('x-auto-upload') || '').trim() === '1') return res.status(400).json(payload);
+    flash(req, 'err', payload.error);
     return res.redirect(`/v/${accessToken}`);
   }
 
 	  // MIME can be spoofed; validate a few common formats by their file signatures.
 	  if (!validateFileSignature(file.path, (file.mimetype || '').toLowerCase(), file.originalname)) {
 	    try { fs.unlinkSync(file.path); } catch {}
-	    flash(req, 'err', 'Dosya türü doğrulanamadı. Lütfen PDF / görsel / Office dosyası yükleyin.');
+	    const payload = { ok: false, error: 'Dosya türü doğrulanamadı. Lütfen PDF / görsel / Office dosyası yükleyin.' };
+	    if (wantsJson(req) || String(req.get('x-auto-upload') || '').trim() === '1') return res.status(415).json(payload);
+	    flash(req, 'err', payload.error);
 	    return res.redirect(`/v/${accessToken}`);
 	  }
 
@@ -1895,7 +1967,9 @@ app.post('/v/:token/upload/:docId', vendorLimiter, loadVendorRequest, upload.sin
     }
   } catch (e) {
     console.error('storage upload failed', e.message);
-    flash(req, 'err', 'Dosya yüklenemedi. Storage ayarlarını kontrol edin.');
+    const payload = { ok: false, error: 'Dosya yüklenemedi. Storage ayarlarını kontrol edin.' };
+    if (wantsJson(req) || String(req.get('x-auto-upload') || '').trim() === '1') return res.status(500).json(payload);
+    flash(req, 'err', payload.error);
     return res.redirect(`/v/${accessToken}`);
   }
 
@@ -1966,6 +2040,11 @@ app.post('/v/:token/upload/:docId', vendorLimiter, loadVendorRequest, upload.sin
       },
     }).catch(e => console.warn('notify vendor.uploaded failed', e.message));
   } catch (e) {}
+
+  const wantsJson = String(req.get('accept') || '').includes('application/json');
+  if (wantsJson) {
+    return res.json({ ok: true });
+  }
 
   flash(req, 'ok', 'Yüklendi.');
   res.redirect(`/v/${accessToken}`);
@@ -2439,11 +2518,27 @@ app.post('/app/templates/default', requireAuth, requireOwner, verifyCsrf, (req, 
 });
 
 app.post('/app/templates/copy', requireAuth, requireOwner, verifyCsrf, (req, res) => {
-  const from = (req.body.from || '').trim();
+  const from = String(req.body.from || req.body.templateId || req.query.from || '').trim();
+  const wants = wantsJson(req);
   const db = readDB();
-  const tpl = findTemplateById(db, req.tenant.id, from);
-  if (!tpl || tpl.builtin !== true) {
-    flash(req, 'err', 'Kopyalanacak hazır şablon bulunamadı.');
+
+  const builtin = builtinTemplates().find(t => t.id === from) || null;
+  const tpl = builtin || findTemplateById(db, req.tenant.id, from);
+  if (!tpl) {
+    const msg = 'Kopyalanacak şablon bulunamadı.';
+    if (wants) return res.status(404).json({ ok: false, error: msg });
+    flash(req, 'err', msg);
+    return res.redirect('/app/templates');
+  }
+
+  // If the tenant already copied/customized this builtin, just reuse it.
+  const existing = builtin
+    ? (db.templates || []).find(t => t.tenantId === req.tenant.id && t.sourceBuiltinId === builtin.id)
+    : null;
+  if (existing) {
+    const msg = 'Bu hazır şablon zaten şirket şablonlarına kopyalandı.';
+    if (wants) return res.json({ ok: true, id: existing.id, existing: true, redirect: '/app/templates' });
+    flash(req, 'ok', msg);
     return res.redirect('/app/templates');
   }
 
@@ -2455,6 +2550,7 @@ app.post('/app/templates/copy', requireAuth, requireOwner, verifyCsrf, (req, res
       tenantId: req.tenant.id,
       name: `${tpl.name} (Özel)`,
       industry: tpl.industry || '',
+      sourceBuiltinId: builtin ? builtin.id : (tpl.sourceBuiltinId || ''),
       docs: (tpl.docs || []).map(d => ({ ...d })),
       createdAt: nowISO(),
       updatedAt: nowISO(),
@@ -2470,8 +2566,9 @@ app.post('/app/templates/copy', requireAuth, requireOwner, verifyCsrf, (req, res
     });
   });
 
-  flash(req, 'ok', 'Şablon kopyalandı. Düzenleyebilirsiniz.');
-  res.redirect(`/app/templates/${id}/edit`);
+  if (wants) return res.json({ ok: true, id, redirect: '/app/templates' });
+  flash(req, 'ok', 'Şablon kopyalandı. Şirket şablonlarında hazır.');
+  res.redirect('/app/templates');
 });
 
 
@@ -3696,34 +3793,8 @@ app.post('/app/requests/:id/delete', requireAuth, verifyCsrf, async (req, res) =
 
 // CSV export for a single request
 app.get('/app/requests/:id/export.csv', requireAuth, (req, res) => {
-  const db = readDB();
-  const r = db.requests.find(x => x.id === req.params.id && x.tenantId === req.tenant.id);
-  if (!r) return res.status(404).send('not_found');
-  res.type('text/csv');
-  res.setHeader('Content-Disposition', `attachment; filename="${r.id}.csv"`);
-
-  const lines = [];
-  lines.push('doc_label,required,status,original_name,size_bytes,mime,uploaded_at,issue_date,expiry_date,signed_confirmed,signature_verified,uploaded_by_role,uploaded_by_email,dates_verified');
-  for (const d of r.docs) {
-    const u = (r.uploads || {})[d.id];
-    lines.push([
-      csv(d.label),
-      d.required ? 'yes' : 'no',
-      u ? 'uploaded' : 'missing',
-      csv(u?.originalName || ''),
-      u?.size || '',
-      csv(u?.mime || ''),
-      csv(u?.uploadedAt || ''),
-      csv(u?.issueDate || ''),
-      csv(u?.expiryDate || ''),
-      u?.signedConfirmed ? 'yes' : 'no',
-      u?.signatureVerified ? 'yes' : 'no',
-      csv(u?.uploadedByRole || ''),
-      csv(u?.uploadedByEmail || ''),
-      u?.datesVerified ? 'yes' : 'no',
-    ].join(','));
-  }
-  res.send(lines.join('\n'));
+  flash(req, 'err', 'CSV dışa aktarma kaldırıldı.');
+  return res.redirect(`/app/requests/${req.params.id}`);
 });
 
 function csv(s) {
@@ -4112,95 +4183,22 @@ async function buildLaunchReport(req) {
 }
 
 app.get('/app/launch', requireAuth, requireOwner, noStore, async (req, res) => {
-  const db = readDB();
-  const plan = getPlanForTenant(db, req.tenant.id);
-  const report = await buildLaunchReport(req);
-
-  res.render('layout', {
-    title: 'Launch Kontrol',
-    appName: APP_NAME,
-    supportEmail: SUPPORT_EMAIL,
-    user: req.user,
-    tenant: req.tenant,
-    plan,
-    csrfToken: res.locals.csrfToken,
-    flash: consumeFlash(req),
-    noindex: true,
-    body: render('app_launch', {
-      csrfToken: res.locals.csrfToken,
-      report,
-    }),
-  });
+  flash(req, 'ok', 'Launch kontrol ekranı kaldırıldı. İlgili ayarlar Ayarlar sayfasında.');
+  return res.redirect('/app/settings');
 });
 
 app.get('/app/launch/report.json', requireAuth, requireOwner, noStore, async (req, res) => {
-  const report = await buildLaunchReport(req);
-  res.json({ ok: true, report });
+  return res.status(404).json({ ok: false, error: 'Not Found' });
 });
 
 app.post('/app/launch/test-email', requireAuth, requireOwner, emailTestLimiter, verifyCsrf, async (req, res) => {
-  const to = String((req.body.to || req.user.email || '')).trim();
-  if (!to || !to.includes('@')) {
-    flash(req, 'err', 'Geçerli bir e-posta girin.');
-    return res.redirect('/app/launch');
-  }
-
-  const mailer = getMailer();
-  if (!mailer) {
-    flash(req, 'err', 'SMTP ayarlı değil. .env içine SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS ekleyin.');
-    return res.redirect('/app/launch');
-  }
-
-  const baseUrl = getBaseUrl(req);
-  try {
-    await mailer.sendMail({
-      from: process.env.SMTP_FROM || `${APP_NAME} <noreply@example.com>`,
-      to,
-      subject: `✅ ${APP_NAME} Test E-postası`,
-      text: `Merhaba!\n\nBu bir test e-postasıdır.\n\n- Uygulama: ${APP_NAME}\n- Sürüm: ${APP_VERSION}\n- Tarih: ${nowISO()}\n- Base URL: ${baseUrl}\n\nBu mail geldiyse SMTP çalışıyor demektir.\n\nDestek: ${SUPPORT_EMAIL}\n`,
-    });
-
-    withDB(db2 => {
-      db2.audit.push({
-        id: safeId('aud'),
-        tenantId: req.tenant.id,
-        requestId: null,
-        actor: req.user.email,
-        action: 'smtp_test_sent',
-        detail: { to },
-        at: nowISO(),
-      });
-    });
-
-    flash(req, 'ok', `Test e-postası gönderildi: ${to}`);
-    return res.redirect('/app/launch');
-  } catch (e) {
-    console.warn('smtp test failed', e.message);
-    flash(req, 'err', 'E-posta gönderilemedi. SMTP ayarlarını (host/port/user/pass) kontrol edin.');
-    return res.redirect('/app/launch');
-  }
+  flash(req, 'err', 'Launch kontrol kaldırıldı. SMTP testi için Ayarlar veya CLI kullanın.');
+  return res.redirect('/app/settings');
 });
 
 app.post('/app/launch/test-alert', requireAuth, requireOwner, emailTestLimiter, verifyCsrf, async (req, res) => {
-  if (!process.env.SECURITY_ALERT_WEBHOOK_URL) {
-    flash(req, 'err', 'SECURITY_ALERT_WEBHOOK_URL ayarlı değil. Launch doktor ekranından görebilirsin.');
-    return res.redirect('/app/launch');
-  }
-
-  const note = String(req.body.message || '').trim().slice(0, 500);
-  try {
-    await sendSecurityAlert({
-      type: 'test_alert',
-      msg: note || 'Manuel test',
-      meta: { actor: req.user.email, tenantId: req.tenant.id, at: nowISO() },
-    });
-    flash(req, 'ok', 'Security alert webhook test mesajı gönderildi.');
-    return res.redirect('/app/launch');
-  } catch (e) {
-    console.warn('security webhook test failed', e.message);
-    flash(req, 'err', 'Webhook mesajı gönderilemedi. URL/izinleri kontrol edin.');
-    return res.redirect('/app/launch');
-  }
+  flash(req, 'err', 'Launch kontrol kaldırıldı. Webhook testi için Ayarlar veya CLI kullanın.');
+  return res.redirect('/app/settings');
 });
 app.post('/app/security/mfa/start', requireAuth, verifyCsrf, (req, res) => {
   // Start MFA setup while logged in
@@ -4606,7 +4604,7 @@ app.use((req, res) => {
     appName: APP_NAME,
     appVersion: APP_VERSION,
     supportEmail: SUPPORT_EMAIL,
-    user: req.session.user || null,
+    user: null,
     flash: consumeFlash(req),
     csrfToken: res.locals.csrfToken,
     cspNonce: res.locals.cspNonce || '',
@@ -4647,16 +4645,22 @@ app.use((err, req, res, next) => {
       method: req.method,
       path: safePath,
       status,
-      userId: (req.session && req.session.user) ? req.session.user.id : null,
+      userId: (req.session && req.session.userId) ? req.session.userId : null,
       ip: req.ip,
       ua: req.headers['user-agent'] || ''
     });
   } catch (_) {}
 
   // Vendor upload UX: redirect back with toast instead of blank stack page
-  if ((req.originalUrl || '').startsWith('/v/') && (req.originalUrl || '').includes('/upload/') && req.params && req.params.token) {
-    flash(req, message, 'error');
-    return res.redirect(`/v/${req.params.token}`);
+  if ((req.originalUrl || '').startsWith('/v/') && (req.originalUrl || '').includes('/upload')) {
+    const m = (req.originalUrl || '').match(/^\/v\/([^/]+)/);
+    const token = (req.params && req.params.token) || (m ? m[1] : null);
+    if (token) {
+      const wantsVendorJson = wantsJson(req) || String(req.get('x-auto-upload') || '').trim() === '1';
+      if (wantsVendorJson) return res.status(status).json({ ok: false, error: message, requestId });
+      flash(req, 'err', message);
+      return res.redirect(303, `/v/${token}`);
+    }
   }
 
   res.status(status);
@@ -4673,7 +4677,7 @@ app.use((err, req, res, next) => {
     appName: APP_NAME,
     appVersion: APP_VERSION,
     supportEmail: SUPPORT_EMAIL,
-    user: req.session.user || null,
+    user: null,
     flash: consumeFlash(req),
     csrfToken: res.locals.csrfToken,
     cspNonce: res.locals.cspNonce || '',

@@ -1,11 +1,39 @@
 document.documentElement.classList.add("js");
+async function copyToClipboard(txt) {
+  // Modern API
+  try {
+    await navigator.clipboard.writeText(txt);
+    return true;
+  } catch (e) {
+    // ignore
+  }
+
+  // Fallback
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '-1000px';
+    ta.style.left = '-1000px';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, ta.value.length);
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return !!ok;
+  } catch (e) {
+    return false;
+  }
+}
+
 function copyText(id){
   const el = document.getElementById(id);
   if(!el) return;
   const txt = el.value || el.textContent || '';
-  navigator.clipboard.writeText(txt).then(()=>{
-    toast('Kopyalandı');
-  }).catch(()=>{});
+  copyToClipboard(txt).then((ok)=>{
+    toast(ok ? 'Kopyalandı' : 'Kopyalanamadı');
+  });
 }
 function toast(msg){
   const t = document.createElement('div');
@@ -18,8 +46,9 @@ function toast(msg){
 
 
 // Auto-upload: dosya seçince otomatik gönder (vendor ekranı)
-// - Eğer required tarih alanları boşsa göndermez, önce onları doldurmanı ister.
-function maybeAutoUpload(form, fileInput) {
+// - required tarih alanları boşsa göndermez.
+// - invalid format seçilirse upload denemez.
+async function maybeAutoUpload(form, fileInput) {
   if (!form || form.dataset.submitting === '1') return;
   if (!fileInput || !(fileInput instanceof HTMLInputElement)) return;
   if (!fileInput.files || !fileInput.files.length) return;
@@ -40,12 +69,58 @@ function maybeAutoUpload(form, fileInput) {
     return;
   }
 
+  // Frontend dosya tipi kontrolü (backend yine de kontrol ediyor)
+  const allowedCsv = (fileInput.dataset.allowedExt || '').trim();
+  if (allowedCsv) {
+    const allowed = allowedCsv.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+    const fileName = (fileInput.files[0] && fileInput.files[0].name) ? String(fileInput.files[0].name) : '';
+    const ext = fileName.includes('.') ? ('.' + fileName.split('.').pop()).toLowerCase() : '';
+    if (allowed.length && ext && !allowed.includes(ext)) {
+      const msg = `Geçersiz dosya türü: ${ext}. İzin verilenler: ${allowed.join(' ')}`;
+      if (ind) ind.textContent = 'Geçersiz format';
+      toast(msg);
+      fileInput.value = '';
+      return;
+    }
+  }
+
   form.dataset.submitting = '1';
   if (ind) ind.textContent = 'Yükleniyor…';
 
-  // requestSubmit doğrulama + submit event tetikler
-  if (typeof form.requestSubmit === 'function') form.requestSubmit();
-  else form.submit();
+  try {
+    const fd = new FormData(form);
+    const resp = await fetch(form.action, {
+      method: (form.method || 'POST').toUpperCase(),
+      body: fd,
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-Auto-Upload': '1',
+      },
+    });
+
+    const data = await resp.json().catch(() => null);
+
+    if (resp.ok && data && data.ok) {
+      if (ind) ind.textContent = '✓';
+      toast('Yüklendi');
+      // Sayfayı yenile: durum/eksik sayacı güncellensin.
+      window.location.reload();
+      return;
+    }
+
+    const errMsg = (data && data.error) ? String(data.error) : 'Yükleme başarısız.';
+    if (ind) ind.textContent = 'Hata';
+    toast(errMsg);
+    fileInput.value = '';
+  } catch (err) {
+    if (ind) ind.textContent = 'Hata';
+    toast('Yükleme sırasında bağlantı hatası.');
+    fileInput.value = '';
+  } finally {
+    form.dataset.submitting = '0';
+  }
 }
 
 // CSP-friendly UI helpers (no inline onclick/onsubmit)
@@ -60,6 +135,18 @@ document.addEventListener('click', (e) => {
 document.addEventListener('submit', (e) => {
   const form = e.target;
   if (!(form instanceof HTMLFormElement)) return;
+
+  if (form.classList.contains('autoUploadForm')) {
+    e.preventDefault();
+    const fileInput = form.querySelector('input[type="file"].fileInput');
+    if (!fileInput || !fileInput.files || !fileInput.files.length) {
+      toast('Önce dosya seçmelisin');
+      return;
+    }
+    maybeAutoUpload(form, fileInput);
+    return;
+  }
+
   const msg = form.getAttribute('data-confirm');
   if (!msg) return;
   if (!confirm(msg)) e.preventDefault();

@@ -77,7 +77,7 @@
             <form method="post" enctype="multipart/form-data" action="/v/<%= accessToken %>/upload/<%= d.id %>" class="autoUploadForm" data-auto-upload="1">
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <div class="filePick">
-                <input id="file_<%= d.id %>" class="fileInput" type="file" name="file" required>
+                <input id="file_<%= d.id %>" class="fileInput" type="file" name="file" accept="<%= uploadAccept %>" data-allowed-ext="<%= uploadAllowedExtCsv %>" data-doc-label="<%= d.label %>" required>
                 <label class="btn fileBtn" for="file_<%= d.id %>">Dosya Seç</label>
                 <span class="fileChosen" data-for="file_<%= d.id %>" aria-hidden="true"></span>
               </div>
@@ -99,7 +99,7 @@
                 </label>
               <% } %>
 
-              <button class="btn js-hide" type="submit" style="margin-top:10px;">Yükle</button>
+              <noscript><button class="btn" type="submit" style="margin-top:10px;">Yükle</button></noscript>
             </form>
 
             <% if (u && (d.issueDateRequired || d.expiryRequired || d.requireSignature)) { %>

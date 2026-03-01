@@ -22,9 +22,10 @@
     <div class="p">Tedarikçiye veya tedarikçi ekibine rol bazlı link gönderebilirsin.</div>
 
     <h3 style="margin:10px 0 6px;">Ana link (genelde yetkili)</h3>
-    <textarea id="vendorLink" readonly style="min-height:70px;"><%= vendorLink %></textarea>
+    <textarea id="vendorLinkFull" readonly style="position:absolute;left:-9999px;top:-9999px;"><%= vendorLink %></textarea>
+    <input id="vendorLinkMasked" class="input" type="text" readonly value="<%= maskUrl(vendorLink) %>" style="width:100%;">
     <div class="row">
-      <button class="btn" type="button" data-copy="vendorLink">Kopyala</button>
+      <button class="btn" type="button" data-copy="vendorLinkFull">Kopyala</button>
       <a class="btn" href="<%= vendorLink %>" target="_blank" rel="noopener">Aç</a>
     </div>
 
@@ -56,9 +57,10 @@
                 <div><%= p.email || '' %></div>
               </td>
               <td class="small">
-                <textarea id="plink_<%= p.id %>" readonly style="min-height:50px;"><%= p.link %></textarea>
+                <textarea id="plinkfull_<%= p.id %>" readonly style="position:absolute;left:-9999px;top:-9999px;"><%= p.link %></textarea>
+                <input class="input" type="text" readonly value="<%= maskUrl(p.link) %>" style="width:100%;">
                 <div class="row">
-                  <button class="btn" type="button" data-copy="plink_<%= p.id %>">Kopyala</button>
+                  <button class="btn" type="button" data-copy="plinkfull_<%= p.id %>">Kopyala</button>
                   <a class="btn" href="<%= p.link %>" target="_blank" rel="noopener">Aç</a>
                 </div>
               </td>
@@ -161,7 +163,6 @@
     <h2>İndir</h2>
     <div class="row">
       <a class="btn" href="/app/requests/<%= reqItem.id %>/download-all.zip">Tüm belgeleri ZIP indir</a>
-      <a class="btn" href="/app/requests/<%= reqItem.id %>/export.csv">CSV dışa aktar</a>
     </div>
 
     <div class="hr"></div>

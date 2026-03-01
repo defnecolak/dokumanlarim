@@ -31,7 +31,7 @@
               <button class="btn" type="submit">Düzenle</button>
             </form>
 
-            <form method="post" action="/app/templates/copy" style="display:inline;">
+            <form method="post" action="/app/templates/copy" class="js-copy-form" style="display:inline;">
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <input type="hidden" name="from" value="<%= t.id %>">
               <button class="btn" type="submit">Kopyala</button>
@@ -116,7 +116,7 @@ document.querySelectorAll('form.js-default-form').forEach(form => {
     try {
       const res = await fetch(form.action, {
         method: 'POST',
-        headers: { 'Accept': 'application/json' },
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
         body,
       });
       const j = await res.json().catch(()=>null);
@@ -125,7 +125,6 @@ document.querySelectorAll('form.js-default-form').forEach(form => {
         return;
       }
       const newId = String(j.defaultTemplateId || '');
-      // tüm kartlarda Varsayılan badge'ini sıfırla
       document.querySelectorAll('.templateCard').forEach(card => {
         const badge = card.querySelector('[data-default-badge]');
         if (!badge) return;
@@ -133,6 +132,31 @@ document.querySelectorAll('form.js-default-form').forEach(form => {
         badge.style.display = (id === newId) ? 'block' : 'none';
       });
       toast('Varsayılan şablon ayarlandı');
+    } catch (err) {
+      toast('Bağlantı hatası');
+    }
+  });
+});
+
+document.querySelectorAll('form.js-copy-form').forEach(form => {
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const body = new URLSearchParams();
+    fd.forEach((v, k) => body.append(k, v));
+    try {
+      const res = await fetch(form.action, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body,
+      });
+      const j = await res.json().catch(()=>null);
+      if (!res.ok || !j || !j.ok) {
+        toast((j && j.error) ? j.error : 'Şablon kopyalanamadı');
+        return;
+      }
+      toast(j.existing ? 'Şablon zaten eklenmişti' : 'Şablon kopyalandı');
+      setTimeout(() => window.location.reload(), 350);
     } catch (err) {
       toast('Bağlantı hatası');
     }
