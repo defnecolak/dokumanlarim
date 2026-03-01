@@ -1,6 +1,6 @@
 {
   "name": "vendor-onboarding-portal",
-  "version": "1.12.8",
+  "version": "1.12.8.2",
   "private": true,
   "description": "Dökümanlarım (Vendor Onboarding) Portalı - SaaS multi-tenant + iyzico + ekip daveti + otomatik hatırlatma + S3/R2 opsiyonel",
   "main": "server.js",
