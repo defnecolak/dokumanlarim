@@ -4442,6 +4442,7 @@ function render(view, locals) {
     ...locals,
     statusLabel,
     formatBytes,
+    maskUrl,
   });
 }
 
