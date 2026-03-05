@@ -4436,9 +4436,11 @@ function render(view, locals) {
   const file = path.join(__dirname, 'views', view + '.ejs');
   const tpl = fs.readFileSync(file, 'utf-8');
   return ejs.render(tpl, {
-    // Make sure CSP nonce exists for partials that embed inline scripts.
-    // If a route forgets to pass it, we still render (script may be blocked by CSP, but page won't 500).
+    // Make sure common view locals exist for partials.
+    // If a route forgets to pass one, the page should still render instead of 500'ing.
     cspNonce: '',
+    uploadAccept: UPLOAD_ACCEPT_ATTR,
+    uploadAllowedExtCsv: UPLOAD_ALLOWED_EXT.join(','),
     ...locals,
     statusLabel,
     formatBytes,
@@ -4679,6 +4681,8 @@ app.use((err, req, res, next) => {
     appVersion: APP_VERSION,
     supportEmail: SUPPORT_EMAIL,
     user: null,
+    tenant: null,
+    plan: null,
     flash: consumeFlash(req),
     csrfToken: res.locals.csrfToken,
     cspNonce: res.locals.cspNonce || '',

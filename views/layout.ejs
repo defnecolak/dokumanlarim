@@ -15,11 +15,11 @@
       <div class="brand">
         <div class="logoBox">D</div>
         <div><%= appName %></div>
-        <% if (tenant) { %><span class="badge"><%= tenant.name %></span><% } %>
-        <% if (plan) { %><span class="badge">Plan: <%= plan.label %></span><% } %>
+        <% if (typeof tenant !== 'undefined' && tenant) { %><span class="badge"><%= tenant.name %></span><% } %>
+        <% if (typeof plan !== 'undefined' && plan) { %><span class="badge">Plan: <%= plan.label %></span><% } %>
       </div>
       <div class="navlinks">
-        <% if (user) { %>
+        <% if (typeof user !== 'undefined' && user) { %>
   <a href="/app/requests">Talepler</a>
   <a href="/app/requests/new">Yeni Talep</a>
   <% if (user.role === 'owner') { %>
@@ -39,7 +39,7 @@
       </div>
     </div>
 
-    <% if (flash && flash.message) { %>
+    <% if (typeof flash !== 'undefined' && flash && flash.message) { %>
       <div class="flash <%= flash.type === 'err' ? 'err' : 'ok' %>"><%= flash.message %></div>
     <% } %>
 
