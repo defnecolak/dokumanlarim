@@ -3,10 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <% const __appVersion = (typeof appVersion !== 'undefined' && appVersion) ? appVersion : "dev"; %>
   <title><%= title %> — <%= appName %></title>
-  <link rel="icon" type="image/svg+xml" href="/public/favicon.svg?v=<%= appVersion %>" />
+  <link rel="icon" type="image/svg+xml" href="/public/favicon.svg?v=<%= __appVersion %>" />
   <!-- Cache-buster so browser updates CSS/JS immediately after an upgrade -->
-  <link rel="stylesheet" href="/public/styles.css?v=<%= appVersion %>" />
+  <link rel="stylesheet" href="/public/styles.css?v=<%= __appVersion %>" />
   <% if (typeof noindex !== 'undefined' && noindex) { %><meta name="robots" content="noindex,nofollow" /><% } %>
 </head>
 <body>
@@ -15,11 +16,11 @@
       <div class="brand">
         <div class="logoBox">D</div>
         <div><%= appName %></div>
-        <% if (typeof tenant !== 'undefined' && tenant) { %><span class="badge"><%= tenant.name %></span><% } %>
-        <% if (typeof plan !== 'undefined' && plan) { %><span class="badge">Plan: <%= plan.label %></span><% } %>
+        <% if (typeof tenant !== "undefined" && tenant) { %><span class="badge"><%= tenant.name %></span><% } %>
+        <% if (typeof plan !== "undefined" && plan) { %><span class="badge">Plan: <%= plan.label %></span><% } %>
       </div>
       <div class="navlinks">
-        <% if (typeof user !== 'undefined' && user) { %>
+        <% if (typeof user !== "undefined" && user) { %>
   <a href="/app/requests">Talepler</a>
   <a href="/app/requests/new">Yeni Talep</a>
   <% if (user.role === 'owner') { %>
@@ -39,15 +40,15 @@
       </div>
     </div>
 
-    <% if (typeof flash !== 'undefined' && flash && flash.message) { %>
+    <% if (flash && flash.message) { %>
       <div class="flash <%= flash.type === 'err' ? 'err' : 'ok' %>"><%= flash.message %></div>
     <% } %>
 
     <%- body %>
 
-    <div class="footer">© <%= new Date().getFullYear() %> <%= appName %> <span class="muted">v<%= appVersion %></span>. Destek: <%= supportEmail %></div>
+    <div class="footer">© <%= new Date().getFullYear() %> <%= appName %> <span class="muted">v<%= __appVersion %></span>. Destek: <%= supportEmail %></div>
   </div>
 
-  <script src="/public/app.js?v=<%= appVersion %>"></script>
+  <script src="/public/app.js?v=<%= __appVersion %>"></script>
 </body>
 </html>

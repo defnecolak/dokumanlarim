@@ -1,0 +1,177 @@
+
+<div class="grid two" style="margin-top:20px;">
+  <div class="card">
+    <h2><%= mode === 'new' ? 'Yeni Şablon' : 'Şablon Düzenle' %></h2>
+
+    <form method="post" action="<%= mode === 'new' ? '/app/templates' : ('/app/templates/' + template.id) %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <label>Şablon adı</label>
+      <input name="name" value="<%= template.name || '' %>" required placeholder="Örn: Lojistik Tedarikçi (Bizim Süreç)" />
+
+      <label>Sektör (opsiyonel)</label>
+      <input name="industry" value="<%= template.industry || '' %>" placeholder="Örn: Lojistik" />
+
+      <div class="hr"></div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+        <h2>Belgeler</h2>
+        <div class="row">
+          <select id="tplSelect" class="btn" style="padding:10px 12px;">
+            <option value="">Şablondan doldur (opsiyonel)</option>
+            <% templates.filter(t => t.builtin).forEach(t => { %>
+              <option value="<%= t.id %>"><%= t.name %></option>
+            <% }) %>
+          </select>
+          <button class="btn" type="button" data-action="apply-selected">Uygula</button>
+        </div>
+      </div>
+
+      <div class="small">Not: Açılır listeden seçim yapınca otomatik doldurur. “Uygula” butonu da yedek olarak kalır.</div>
+
+      <div id="docs"></div>
+  <button class="btn" type="button" data-action="add-doc">Belge ekle</button>
+
+      <div class="hr"></div>
+      <button class="btn primary" type="submit">Kaydet</button>
+      <a class="btn" href="/app/templates">Geri</a>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Alanlar</h2>
+    <div class="p">
+      Bu şablonla hazırlanan taleplerde tedarikçi tarafında ekstra kontroller oluşur:
+    </div>
+    <ul class="small">
+      <li><b>İmza gerekli</b>: Tedarikçi “imzalı” bilgisini işaretlemeden gönderemez.</li>
+      <li><b>Düzenleme tarihi gerekli</b>: Belgenin düzenlenme tarihini girer.</li>
+      <li><b>Geçerlilik tarihi gerekli</b>: Süresi dolmuş belge ile gönderemez.</li>
+      <li><b>Uyarı gün</b>: Bitmeye yakın “yakında doluyor” uyarısı gösterilir.</li>
+    </ul>
+  </div>
+</div>
+
+<script nonce="<%= cspNonce %>">
+const templatesLib = <%- JSON.stringify(templates || []).replace(/</g, '\\u003c') %>;
+const initialDocs = <%- JSON.stringify(template.docs || []).replace(/</g, '\\u003c') %>;
+
+function escapeHtml(s){ return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
+
+function docRowHTML(i, d){
+  const req = d.required ? 'checked' : '';
+  const sig = d.requireSignature ? 'checked' : '';
+  const issue = d.issueDateRequired ? 'checked' : '';
+  const exp = d.expiryRequired ? 'checked' : '';
+  const warn = d.expiryWarnDays ? d.expiryWarnDays : (d.expiryRequired ? 30 : 0);
+
+  return `
+    <div class="card" style="margin:10px 0;">
+      <label>Belge adı</label>
+      <input name="docLabel_${i}" value="${escapeHtml(d.label||'')}" required>
+
+      <div class="row" style="margin-top:10px;flex-wrap:wrap;">
+        <label class="small" style="display:flex;gap:8px;align-items:center;">
+          <input type="checkbox" name="docRequired_${i}" ${req} style="width:auto;"> Zorunlu
+        </label>
+        <label class="small" style="display:flex;gap:8px;align-items:center;">
+          <input type="checkbox" name="docSignature_${i}" ${sig} style="width:auto;"> İmza gerekli
+        </label>
+        <label class="small" style="display:flex;gap:8px;align-items:center;">
+          <input type="checkbox" name="docIssueDate_${i}" ${issue} style="width:auto;"> Düzenleme tarihi gerekli
+        </label>
+        <label class="small" style="display:flex;gap:8px;align-items:center;">
+          <input type="checkbox" name="docExpiry_${i}" ${exp} style="width:auto;" data-action="toggle-warn"> Geçerlilik tarihi gerekli
+        </label>
+        <label class="small" style="display:flex;gap:8px;align-items:center;">
+          Uyarı gün:
+          <input type="number" min="1" max="365" name="docWarnDays_${i}" value="${warn}" data-role="warn-days" style="width:90px;" ${d.expiryRequired ? '' : 'disabled'}>
+        </label>
+      </div>
+
+      <button type="button" class="btn danger" data-action="remove-doc">Kaldır</button>
+    </div>
+  `;
+}
+
+function toggleWarn(checkbox){
+  const wrap = checkbox.closest('.card');
+  if(!wrap) return;
+  const inp = wrap.querySelector('[data-role="warn-days"]');
+  if(inp) inp.disabled = !checkbox.checked;
+}
+
+function addDoc(label='', required=true){
+  const wrap = document.getElementById('docs');
+  const i = wrap.children.length;
+  const d = (typeof label === 'object') ? label : { label, required };
+  const row = document.createElement('div');
+  row.innerHTML = docRowHTML(i, d);
+  wrap.appendChild(row.firstElementChild);
+}
+
+function resequence(){
+  const wrap = document.getElementById('docs');
+  Array.from(wrap.children).forEach((card, idx)=>{
+    const rename = (prefix) => {
+      const el = card.querySelector(`[name^="${prefix}_"]`);
+      if (el) el.name = `${prefix}_${idx}`;
+    };
+    rename('docLabel'); rename('docRequired'); rename('docSignature'); rename('docIssueDate'); rename('docExpiry'); rename('docWarnDays');
+    // keep the warn-days input state consistent after renaming
+    const exp = card.querySelector(`[name^="docExpiry_"]`);
+    if (exp) toggleWarn(exp);
+  });
+}
+
+function clearDocs(){
+  document.getElementById('docs').innerHTML = '';
+}
+
+function applySelected(forceAsk = true){
+  const id = document.getElementById('tplSelect').value;
+  if(!id) return;
+  const tpl = templatesLib.find(t => t.id === id);
+  if(!tpl) return;
+  const hasExistingDocs = document.getElementById('docs').children.length > 0;
+  if(forceAsk && hasExistingDocs && !confirm('Mevcut belge listesi değiştirilecek. Devam edilsin mi?')) return;
+  clearDocs();
+  (tpl.docs||[]).forEach(d => addDoc(d));
+  resequence();
+}
+
+// CSP-safe event wiring (no inline handlers)
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-action]');
+  if (!t) return;
+  const action = t.getAttribute('data-action');
+  if (action === 'add-doc') {
+    e.preventDefault();
+    addDoc();
+    resequence();
+  }
+  if (action === 'apply-selected') {
+    e.preventDefault();
+    applySelected();
+  }
+  if (action === 'remove-doc') {
+    e.preventDefault();
+    const card = t.closest('.docRow') || t.closest('.card');
+    if (card) card.remove();
+    resequence();
+  }
+});
+
+document.addEventListener('change', (e) => {
+  const cb = e.target;
+  if (cb && cb.matches('input[data-action="toggle-warn"]')) {
+    toggleWarn(cb);
+    return;
+  }
+  if (cb && cb.id === 'tplSelect' && cb.value) {
+    applySelected(false);
+  }
+});
+
+(initialDocs.length ? initialDocs : []).forEach(d => addDoc(d));
+</script>

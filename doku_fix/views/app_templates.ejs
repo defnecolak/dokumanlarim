@@ -1,0 +1,182 @@
+
+<div class="grid two" style="margin-top:20px;">
+  <div class="card">
+    <h2>Sektör Şablonları</h2>
+    <div class="p">Sektöre göre örnek checklist’ler. <b>Düzenle</b> ile şirketin için özel kopya oluşturup değiştirebilirsin.</div>
+    <div class="hr"></div>
+
+    <% builtins.forEach(t => { %>
+      <div class="card templateCard" data-template-id="<%= t.id %>" style="margin:12px 0;">
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;">
+          <div>
+            <div><b><%= t.name %></b> <span class="badge"><%= t.industry || 'Genel' %></span></div>
+            <div class="small"><%= (t.docs||[]).length %> belge</div>
+            <% if (defaultTemplateId === t.id) { %>
+              <div class="small" data-default-badge><span class="badge">Varsayılan</span></div>
+            <% } else { %>
+              <div class="small" data-default-badge style="display:none;"><span class="badge">Varsayılan</span></div>
+            <% } %>
+          </div>
+
+          <div class="row">
+            <form method="post" action="/app/templates/default" class="js-default-form" style="display:inline;">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="hidden" name="templateId" value="<%= t.id %>">
+              <button class="btn" type="submit">Varsayılan yap</button>
+            </form>
+
+            <form method="post" action="/app/templates/builtin/edit" style="display:inline;">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="hidden" name="from" value="<%= t.id %>">
+              <button class="btn" type="submit">Düzenle</button>
+            </form>
+
+            <form method="post" action="/app/templates/copy" class="js-copy-form" style="display:inline;">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="hidden" name="from" value="<%= t.id %>">
+              <button class="btn" type="submit">Kopyala</button>
+            </form>
+          </div>
+        </div>
+
+        <details style="margin-top:10px;">
+          <summary class="small">Belge listesi</summary>
+          <ul class="small templateDocList">
+            <% (t.docs||[]).forEach(d => { %>
+              <li>
+                <%= d.label %>
+                <% if (d.required) { %><span class="badge">Zorunlu</span><% } %>
+                <% if (d.requireSignature) { %><span class="badge">İmza</span><% } %>
+                <% if (d.expiryRequired) { %><span class="badge">Geçerlilik</span><% } %>
+              </li>
+            <% }) %>
+          </ul>
+        </details>
+      </div>
+    <% }) %>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+      <h2>Şirket Şablonları</h2>
+      <a class="btn primary" href="/app/templates/new">Yeni şablon</a>
+    </div>
+
+    <div class="p">Bu şablonlar sadece senin şirketinde görünür.</div>
+    <div class="hr"></div>
+
+    <% if (tenantTemplates.length === 0) { %>
+      <div class="p">Henüz özel şablon yok. Sektör şablonlarından birini <b>Kopyala</b> veya <b>Düzenle</b> ile başlayabilirsin.</div>
+    <% } %>
+
+    <% tenantTemplates.forEach(t => { %>
+      <div class="card templateCard" data-template-id="<%= t.id %>" style="margin:12px 0;">
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;">
+          <div>
+            <div><b><%= t.name %></b> <span class="badge"><%= t.industry || 'Genel' %></span></div>
+            <div class="small"><%= (t.docs||[]).length %> belge</div>
+            <% if (defaultTemplateId === t.id) { %>
+              <div class="small" data-default-badge><span class="badge">Varsayılan</span></div>
+            <% } else { %>
+              <div class="small" data-default-badge style="display:none;"><span class="badge">Varsayılan</span></div>
+            <% } %>
+          </div>
+          <div class="row">
+            <a class="btn" href="/app/templates/<%= t.id %>/edit">Düzenle</a>
+
+            <form method="post" action="/app/templates/default" class="js-default-form" style="display:inline;">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="hidden" name="templateId" value="<%= t.id %>">
+              <button class="btn" type="submit">Varsayılan yap</button>
+            </form>
+
+            <form method="post" action="/app/templates/<%= t.id %>/delete" style="display:inline;" data-confirm="Şablon silinsin mi?">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="btn danger" type="submit">Sil</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    <% }) %>
+
+    <div class="hr"></div>
+    <div class="small">İpucu: Varsayılan şablon, “Yeni Talep” sayfasında otomatik seçili gelir.</div>
+  </div>
+</div>
+
+<script nonce="<%= cspNonce %>">
+async function postFormJsonOrReload(form){
+  const fd = new FormData(form);
+  const body = new URLSearchParams();
+  fd.forEach((v, k) => body.append(k, v));
+  const res = await fetch(form.action, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Accept': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+      'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+    },
+    body: body.toString(),
+  });
+  const ctype = String(res.headers.get('content-type') || '').toLowerCase();
+  if (res.redirected && !ctype.includes('application/json')) {
+    window.location.href = res.url;
+    return null;
+  }
+  if (!ctype.includes('application/json')) {
+    if (res.ok) {
+      window.location.reload();
+      return null;
+    }
+    throw new Error('non_json_response');
+  }
+  return await res.json();
+}
+
+// Varsayılan yap: AJAX ile güncelle, JSON dönmezse güvenli fallback yap.
+document.querySelectorAll('form.js-default-form').forEach(form => {
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      const j = await postFormJsonOrReload(form);
+      if (!j) return;
+      if (!j.ok) {
+        toast(j.error || 'İşlem başarısız');
+        return;
+      }
+      const newId = String(j.defaultTemplateId || '');
+      document.querySelectorAll('.templateCard').forEach(card => {
+        const badge = card.querySelector('[data-default-badge]');
+        if (!badge) return;
+        const id = String(card.getAttribute('data-template-id') || '');
+        badge.style.display = (id === newId) ? 'block' : 'none';
+      });
+      toast('Varsayılan şablon ayarlandı');
+    } catch (err) {
+      console.error(err);
+      form.submit();
+    }
+  });
+});
+
+// Kopyala: JSON başarılıysa toast + reload. Aksi halde normal submit fallback.
+document.querySelectorAll('form.js-copy-form').forEach(form => {
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      const j = await postFormJsonOrReload(form);
+      if (!j) return;
+      if (!j.ok) {
+        toast(j.error || 'Şablon kopyalanamadı');
+        return;
+      }
+      toast(j.existing ? 'Şablon zaten eklenmişti' : 'Şablon kopyalandı');
+      setTimeout(() => window.location.reload(), 300);
+    } catch (err) {
+      console.error(err);
+      form.submit();
+    }
+  });
+});
+</script>

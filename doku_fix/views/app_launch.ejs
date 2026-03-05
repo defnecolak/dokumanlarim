@@ -1,0 +1,153 @@
+<div style="margin-top:18px;" class="grid two">
+  <div class="card">
+    <h2>Launch Kontrol</h2>
+    <div class="small">Bu ekran sadece <b>Owner</b> içindir. Amaç: public launch öncesi kritik ayarları tek yerden görmek ve hızlı test etmek.</div>
+
+    <div class="hr"></div>
+
+    <h3>Kritik sinyaller</h3>
+    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
+      <span class="badge" style="border-color:<%= report.gates.httpsOk ? 'var(--border)' : '#ef4444' %>; color:<%= report.gates.httpsOk ? 'var(--muted)' : '#b91c1c' %>;">HTTPS: <b><%= report.gates.httpsOk ? 'OK' : 'GEREKLİ' %></b></span>
+      <span class="badge" style="border-color:<%= report.gates.baseUrlOk ? 'var(--border)' : '#ef4444' %>; color:<%= report.gates.baseUrlOk ? 'var(--muted)' : '#b91c1c' %>;">BASE_URL: <b><%= report.gates.baseUrlOk ? 'OK' : 'EKSİK/HTTP' %></b></span>
+      <span class="badge" style="border-color:<%= report.gates.sessionOk ? 'var(--border)' : '#ef4444' %>; color:<%= report.gates.sessionOk ? 'var(--muted)' : '#b91c1c' %>;">Session Secret: <b><%= report.gates.sessionOk ? 'OK' : 'ZAYIF' %></b></span>
+      <span class="badge" style="border-color:<%= report.gates.sessionRotationRecommended ? 'var(--border)' : '#f59e0b' %>; color:<%= report.gates.sessionRotationRecommended ? 'var(--muted)' : '#92400e' %>;">Key Rotation: <b><%= report.gates.sessionRotationRecommended ? 'OK' : 'ÖNERİLİR' %></b></span>
+      <span class="badge" style="border-color:<%= report.email.enabled ? 'var(--border)' : '#f59e0b' %>; color:<%= report.email.enabled ? 'var(--muted)' : '#92400e' %>;">SMTP: <b><%= report.email.enabled ? 'AÇIK' : 'KAPALI' %></b></span>
+      <span class="badge" style="border-color:<%= report.email.spf.ok ? 'var(--border)' : '#f59e0b' %>; color:<%= report.email.spf.ok ? 'var(--muted)' : '#92400e' %>;">SPF: <b><%= report.email.spf.ok ? 'OK' : 'EKSİK' %></b></span>
+      <span class="badge" style="border-color:<%= report.email.dmarc.ok ? 'var(--border)' : '#f59e0b' %>; color:<%= report.email.dmarc.ok ? 'var(--muted)' : '#92400e' %>;">DMARC: <b><%= report.email.dmarc.ok ? 'OK' : 'EKSİK' %></b></span>
+      <span class="badge">Cloudflare: <b><%= report.security.behindCloudflare ? 'VAR' : 'BELİRSİZ' %></b></span>
+      <span class="badge">Turnstile: <b><%= report.security.turnstileEnabled ? 'AÇIK' : 'KAPALI' %></b></span>
+      <span class="badge">Security Alert Webhook: <b><%= report.security.securityAlertWebhook ? 'AÇIK' : 'KAPALI' %></b></span>
+    </div>
+
+    <div class="hr"></div>
+
+    <h3>Çevre / URL</h3>
+    <div class="p">
+      <b>Environment:</b> <span class="kbd"><%= report.app.nodeEnv %></span>
+      &nbsp;•&nbsp; <b>Sürüm:</b> <span class="kbd"><%= report.app.version %></span>
+      &nbsp;•&nbsp; <b>Host:</b> <span class="kbd"><%= report.request.host %></span>
+      &nbsp;•&nbsp; <b>Proto:</b> <span class="kbd"><%= report.request.proto %></span>
+      <br/>
+      <b>Hesaplanan Base URL:</b> <span class="kbd"><%= report.request.baseUrlComputed %></span>
+      <br/>
+      <b>.env BASE_URL:</b> <span class="kbd"><%= report.request.baseUrlEnv || '(boş)' %></span>
+    </div>
+
+    <div class="hr"></div>
+
+    <h3>Güvenlik ayarları</h3>
+    <div class="p">
+      <b>TRUST_PROXY:</b> <span class="kbd"><%= report.security.trustProxy ? '1' : '0' %></span>
+      &nbsp;•&nbsp; <b>FORCE_HTTPS:</b> <span class="kbd"><%= report.security.forceHttps ? '1' : '0' %></span>
+      &nbsp;•&nbsp; <b>COOKIE_SECURE:</b> <span class="kbd"><%= report.security.cookieSecure ? '1' : '0' %></span>
+      <br/>
+      <b>CSP:</b> <span class="kbd"><%= report.security.cspEnabled ? (report.security.cspReportOnly ? 'Report-Only' : 'Enforced') : 'Kapalı' %></span>
+      &nbsp;•&nbsp; <b>Global rate-limit:</b> <span class="kbd"><%= report.security.globalRateLimitMax %>/10dk</span>
+      <br/>
+      <b>Login lockout:</b> <span class="kbd"><%= report.security.loginLockMaxFails %> deneme → <%= report.security.loginLockMinutes %> dk</span>
+      <br/>
+      <b>Email doğrulama:</b> <span class="kbd"><%= report.security.emailVerificationRequired ? 'Zorunlu' : 'Opsiyonel' %></span>
+    </div>
+
+    <div class="hr"></div>
+
+    <h3>Loglar</h3>
+    <div class="p">
+      <b>security.log:</b> <%= report.logs.securityLogExists ? 'var' : 'yok (ilk event ile oluşur)' %>
+      <br/>
+      <b>access.log:</b> <%= report.logs.accessLogExists ? 'var' : 'yok (ilk request ile oluşur)' %>
+      <div class="small" style="margin-top:8px;">Merkezi log için: <span class="kbd">docs/OBSERVABILITY.md</span></div>
+    </div>
+
+    <div class="hr"></div>
+
+    <h3>Legal</h3>
+    <div class="p">
+      <a href="/legal/privacy" target="_blank">Gizlilik Politikası</a>
+      &nbsp;•&nbsp;
+      <a href="/legal/terms" target="_blank">Kullanım Şartları</a>
+      &nbsp;•&nbsp;
+      <a href="/.well-known/security.txt" target="_blank">security.txt</a>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="small">
+      JSON rapor: <a href="/app/launch/report.json" target="_blank">/app/launch/report.json</a>
+      <br/>
+      CLI: <span class="kbd">npm run doctor</span> ve <span class="kbd">npm run smoke</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>E-posta / DNS Kontrol</h2>
+
+    <div class="p">
+      <b>SMTP:</b> <%= report.email.enabled ? 'Açık' : 'Kapalı' %>
+      <% if (report.email.smtpHost) { %>
+        <div class="small">Host: <span class="kbd"><%= report.email.smtpHost %></span></div>
+      <% } %>
+      <% if (report.email.smtpFrom) { %>
+        <div class="small">From: <span class="kbd"><%= report.email.smtpFrom %></span></div>
+      <% } %>
+      <div class="small">Support: <span class="kbd"><%= report.email.supportEmail %></span></div>
+    </div>
+
+    <div class="hr"></div>
+
+    <h3>SPF / DMARC (mail deliverability)</h3>
+    <div class="small">Domain: <span class="kbd"><%= report.email.mailDomain || '(bulunamadı)' %></span></div>
+
+    <div class="p" style="margin-top:10px;">
+      <b>SPF:</b> <%= report.email.spf.ok ? 'OK' : 'EKSİK / BULUNAMADI' %>
+      <% if (report.email.spf.record) { %>
+        <div class="small" style="margin-top:6px;">Kayıt: <span class="kbd"><%= report.email.spf.record %></span></div>
+      <% } else if (report.email.spf.error) { %>
+        <div class="small" style="margin-top:6px;">Not: <span class="kbd"><%= report.email.spf.error %></span></div>
+      <% } %>
+
+      <div style="height:10px"></div>
+
+      <b>DMARC:</b> <%= report.email.dmarc.ok ? 'OK' : 'EKSİK / BULUNAMADI' %>
+      <% if (report.email.dmarc.record) { %>
+        <div class="small" style="margin-top:6px;">Kayıt: <span class="kbd"><%= report.email.dmarc.record %></span></div>
+      <% } else if (report.email.dmarc.error) { %>
+        <div class="small" style="margin-top:6px;">Not: <span class="kbd"><%= report.email.dmarc.error %></span></div>
+      <% } %>
+
+      <div class="small" style="margin-top:10px;">Not: DKIM provider'a göre değişir (selector gerekir). SPF/DMARC yoksa mailler spam'e düşer.</div>
+    </div>
+
+    <div class="hr"></div>
+
+    <h3>SMTP test gönder</h3>
+    <div class="small">Bu buton, girilen adrese test e-postası yollar. (Owner + rate limit)</div>
+
+    <form method="post" action="/app/launch/test-email" style="margin-top:10px;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Alıcı e-posta</label>
+      <input name="to" value="<%= report.email.supportEmail %>" placeholder="ornek@firma.com" />
+      <button class="btn primary" type="submit" style="margin-top:10px;">Test e-postası gönder</button>
+    </form>
+
+    <div class="hr"></div>
+
+    <h3>Security alert webhook test</h3>
+    <div class="small">Kritik olaylar için (login brute force, şüpheli aksiyonlar vb.) tek bir webhook'a alarm atmak iyi kaldıraçtır.</div>
+    <div class="small" style="margin-top:6px;">Durum: <b><%= report.securityAlertWebhook.ok ? 'AÇIK' : 'KAPALI' %></b></div>
+
+    <form method="post" action="/app/launch/test-alert" style="margin-top:10px;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Mesaj (opsiyonel)</label>
+      <input name="message" placeholder="Örn: Prod test - alarm geliyor mu?" />
+      <button class="btn" type="submit" style="margin-top:10px;">Test alarmı gönder</button>
+    </form>
+
+    <div class="hr"></div>
+
+    <h3>Hızlı test komutları</h3>
+    <pre class="kbd">npm run doctor
+npm run smoke</pre>
+    <div class="small">Daha detaylı test planı: <span class="kbd">docs/TEST_PLAN.md</span></div>
+  </div>
+</div>

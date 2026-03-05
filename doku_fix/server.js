@@ -2276,6 +2276,7 @@ app.get('/app/templates', requireAuth, requireOwner, noStore, (req, res) => {
   res.render('layout', {
     title: 'Şablonlar',
     appName: APP_NAME,
+    appVersion: APP_VERSION,
     supportEmail: SUPPORT_EMAIL,
     user: req.user,
     tenant: req.tenant,
@@ -2302,6 +2303,7 @@ app.get('/app/templates/new', requireAuth, requireOwner, noStore, (req, res) => 
   res.render('layout', {
     title: 'Yeni Şablon',
     appName: APP_NAME,
+    appVersion: APP_VERSION,
     supportEmail: SUPPORT_EMAIL,
     user: req.user,
     tenant: req.tenant,
@@ -2399,6 +2401,7 @@ app.get('/app/templates/:id/edit', requireAuth, requireOwner, noStore, (req, res
   res.render('layout', {
     title: 'Şablon Düzenle',
     appName: APP_NAME,
+    appVersion: APP_VERSION,
     supportEmail: SUPPORT_EMAIL,
     user: req.user,
     tenant: req.tenant,
@@ -2416,7 +2419,8 @@ app.get('/app/templates/:id/edit', requireAuth, requireOwner, noStore, (req, res
   });
 });
 
-app.post('/app/templates/:id', requireAuth, requireOwner, verifyCsrf, (req, res) => {
+app.post('/app/templates/:id', requireAuth, requireOwner, verifyCsrf, (req, res, next) => {
+  if (['copy', 'default'].includes(String(req.params.id || '').trim())) return next();
   const name = (req.body.name || '').trim();
   const industry = (req.body.industry || '').trim();
   if (!name) {
@@ -2490,8 +2494,8 @@ app.post('/app/templates/default', requireAuth, requireOwner, verifyCsrf, (req, 
   const db = readDB();
   const t = findTemplateById(db, req.tenant.id, templateId);
   if (!t) {
-    const wantsJson = String(req.headers.accept || '').includes('application/json');
-    if (wantsJson) return res.status(404).json({ ok: false, error: 'Şablon bulunamadı.' });
+    const wants = wantsJson(req);
+    if (wants) return res.status(404).json({ ok: false, error: 'Şablon bulunamadı.' });
     flash(req, 'err', 'Şablon bulunamadı.');
     return res.redirect('/app/templates');
   }
@@ -2510,8 +2514,8 @@ app.post('/app/templates/default', requireAuth, requireOwner, verifyCsrf, (req, 
     });
   });
 
-  const wantsJson = String(req.headers.accept || '').includes('application/json');
-  if (wantsJson) return res.json({ ok: true, defaultTemplateId: templateId });
+  const wants = wantsJson(req);
+  if (wants) return res.json({ ok: true, defaultTemplateId: templateId });
 
   flash(req, 'ok', 'Varsayılan şablon ayarlandı.');
   res.redirect('/app/templates');
@@ -4034,6 +4038,7 @@ app.get('/app/security', requireAuth, noStore, (req, res) => {
   res.render('layout', {
     title: 'Güvenlik',
     appName: APP_NAME,
+    appVersion: APP_VERSION,
     supportEmail: SUPPORT_EMAIL,
     user: req.user,
     tenant: req.tenant,
@@ -4436,11 +4441,9 @@ function render(view, locals) {
   const file = path.join(__dirname, 'views', view + '.ejs');
   const tpl = fs.readFileSync(file, 'utf-8');
   return ejs.render(tpl, {
-    // Make sure common view locals exist for partials.
-    // If a route forgets to pass one, the page should still render instead of 500'ing.
+    // Make sure CSP nonce exists for partials that embed inline scripts.
+    // If a route forgets to pass it, we still render (script may be blocked by CSP, but page won't 500).
     cspNonce: '',
-    uploadAccept: UPLOAD_ACCEPT_ATTR,
-    uploadAllowedExtCsv: UPLOAD_ALLOWED_EXT.join(','),
     ...locals,
     statusLabel,
     formatBytes,
@@ -4608,6 +4611,8 @@ app.use((req, res) => {
     appVersion: APP_VERSION,
     supportEmail: SUPPORT_EMAIL,
     user: null,
+    tenant: null,
+    plan: null,
     flash: consumeFlash(req),
     csrfToken: res.locals.csrfToken,
     cspNonce: res.locals.cspNonce || '',

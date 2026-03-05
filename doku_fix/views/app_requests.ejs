@@ -1,0 +1,52 @@
+<div style="margin-top:20px;" class="card">
+  <h2>Talepler</h2>
+  <div class="p">Filtre: 
+    <a href="/app/requests">Hepsi</a> ·
+    <a href="/app/requests?status=open">Açık</a> ·
+    <a href="/app/requests?status=submitted">Gönderildi</a> ·
+    <a href="/app/requests?status=approved">Onaylandı</a> ·
+    <a href="/app/requests?status=rejected">Reddedildi</a> ·
+    <a href="/app/requests?status=archived">Arşiv</a>
+  </div>
+  <div class="hr"></div>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Zaman</th>
+        <th>Tedarikçi</th>
+        <th>Durum</th>
+        <th>İlerleme</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    <% if (requests.length === 0) { %>
+      <tr><td colspan="5" class="p">Henüz talep yok.</td></tr>
+    <% } %>
+    <% requests.forEach(r => { %>
+      <tr>
+        <td class="small">
+          <div><%= r.createdAt.slice(0,16).replace('T',' ') %></div>
+          <div class="small">No: <%= r.publicId || r.id %></div>
+        </td>
+        <td>
+          <div><b><%= r.vendor.name %></b> <span class="small">— <%= r.vendor.company || '-' %></span></div>
+          <div class="small"><%= r.vendor.email || '' %></div>
+        </td>
+        <td><span class="status <%= r.status %>"><%= statusLabel(r.status) %></span></td>
+        <td class="small">
+          <div><%= r.progress.done %>/<%= r.progress.required %> zorunlu · <%= r.progress.total %> toplam</div>
+          <% if (r.health && (r.health.errors || r.health.warnings)) { %>
+            <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
+              <% if (r.health.errors) { %><span class="pill err"><%= r.health.errors %> eksik</span><% } %>
+              <% if (r.health.warnings) { %><span class="pill warn"><%= r.health.warnings %> uyarı</span><% } %>
+            </div>
+          <% } %>
+        </td>
+        <td><a class="btn" href="/app/requests/<%= encodeURIComponent(r.publicId || r.id) %>">Aç</a></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+</div>

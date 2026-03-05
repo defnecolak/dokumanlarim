@@ -1,0 +1,373 @@
+
+<div class="grid two" style="margin-top:20px;">
+  <div class="card">
+    <h2>Yeni Talep</h2>
+    <form id="newRequestForm" method="post" action="/app/requests">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <label>Tedarikçi adı</label>
+      <input name="vendorName" required placeholder="Örn: Defne Çolak" />
+
+      <label>Şirket</label>
+      <input name="vendorCompany" placeholder="Örn: Defne İmt." />
+
+      <label>E-posta</label>
+      <input name="vendorEmail" type="email" placeholder="ornek@tedarikci.com" />
+
+      <label>Son tarih (opsiyonel)</label>
+      <input name="dueDate" type="date" />
+
+      <label>Tedarikçi mesajı (opsiyonel)</label>
+      <textarea name="vendorMessage" placeholder="Merhaba, lütfen aşağıdaki belgeleri yükleyiniz..."></textarea>
+
+      <div class="hr"></div>
+
+      <div id="belgeler"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+        <h2>Belgeler</h2>
+
+        <% if ((templates||[]).length) { %>
+          <div class="tplChipsWrap">
+            <div class="tplChips" aria-label="Şablonlar">
+              <a class="tplChip <%= !initialTemplateId ? 'active' : '' %>" href="/app/requests/new?tpl=none#belgeler">Boş (şablonsuz)</a>
+              <% templates.forEach(t => { %>
+                <a class="tplChip <%= String(t.id) === String(initialTemplateId||'') ? 'active' : '' %>" href="/app/requests/new?tpl=<%= encodeURIComponent(t.id) %>#belgeler">
+                  <%= t.name %>
+                </a>
+              <% }) %>
+            </div>
+
+            <button id="clearDraftBtn" class="btn" type="button" title="Yeni talep taslağını temizle">Taslağı temizle</button>
+          </div>
+        <% } %>
+      </div>
+
+      <div class="small">İpucu: Şablon seçersen sayfa yenilenir ve belge listesi otomatik dolar. Sonra istediğin gibi ekleyip çıkarabilirsin.</div>
+
+      <% const currentTpl = (templates||[]).find(t => String(t.id) === String(initialTemplateId||'')) || null; %>
+      <% if (currentTpl) { %>
+        <div class="small muted" style="margin-top:6px;">
+          Uygulanan şablon: <b><%= currentTpl.name %></b>
+          — <b><%= (defaultDocs||[]).length %></b> belge
+        </div>
+      <% } %>
+
+
+      <div id="docsEmpty" class="small muted" style="margin:10px 0;">
+        Henüz belge eklenmedi. Şablon seçebilir veya <b>Belge ekle</b> diyebilirsin.
+      </div>
+
+      <div id="docs"></div>
+      <button class="btn" type="button" data-action="add-doc">Belge ekle</button>
+
+      <div class="hr"></div>
+      <button class="btn primary" type="submit">Oluştur</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Plan limitleri</h2>
+    <div class="p">
+      Plan: <b><%= plan.label %></b><br/>
+      Aktif talep limiti: <b><%= plan.maxActiveRequests %></b><br/>
+      Talep başına belge limiti: <b><%= plan.maxDocsPerRequest %></b>
+    </div>
+    <div class="hr"></div>
+    <div class="small">Not: Zorunlu belgeler tamamlanmadan tedarikçi “Gönder” yapamaz. İmza/geçerlilik alanlarını da istersen zorunlu yapabilirsin.</div>
+  </div>
+</div>
+
+<script nonce="<%= cspNonce %>">
+const defaultDocs = <%- JSON.stringify(defaultDocs || []).replace(/</g, '\\u003c') %>;
+
+// --- Launch-ready Draft UX ---
+// Amaç:
+// 1) Şablon değiştirince girilen alanlar (özellikle e-posta) silinmesin.
+// 2) Sayfadan çıkıp geri gelince taslak otomatik geri yüklensin.
+// 3) Sağ üstte mini "Kaydedildi / Geri yüklendi" bildirimi.
+// 4) "Taslağı temizle" butonu.
+
+const TENANT_ID = <%- JSON.stringify(tenantId || '') %>;
+const USER_ID = <%- JSON.stringify(userId || '') %>;
+
+const DRAFT_KEY = `dokumanlarim_newreq_draft_v2:${TENANT_ID}:${USER_ID}`;
+const DRAFT_TTL_MS = 14 * 24 * 60 * 60 * 1000; // 14 gün
+const DRAFT_TOAST_KEY = `dokumanlarim_newreq_toast_v1:${TENANT_ID}:${USER_ID}`;
+
+function toastTR(msg, kind='ok'){
+  // Uses existing .flash styles for consistency.
+  const t = document.createElement('div');
+  t.className = `flash ${kind === 'err' ? 'err' : 'ok'}`;
+  t.style.position = 'fixed';
+  t.style.top = '16px';
+  t.style.right = '16px';
+  t.style.left = 'auto';
+  t.style.bottom = 'auto';
+  t.style.transform = 'none';
+  t.style.zIndex = '9999';
+  t.style.margin = '0';
+  t.style.maxWidth = '320px';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 1600);
+}
+
+function loadDraft(){
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if(!raw) return null;
+    const d = JSON.parse(raw);
+    if(!d || typeof d !== 'object') return null;
+    if(d.at && (Date.now() - d.at) > DRAFT_TTL_MS) return null;
+    return d;
+  } catch { return null; }
+}
+
+function saveDraft(reason='auto'){
+  // IMPORTANT: sayfada navbar logout formu da var. Yanlış formu seçmemek için ID ile bağlan.
+  const form = document.getElementById('newRequestForm');
+  if(!form) return;
+  const pick = (name) => {
+    const el = form.querySelector(`[name="${name}"]`);
+    return el ? el.value : '';
+  };
+  const d = {
+    vendorName: pick('vendorName'),
+    vendorCompany: pick('vendorCompany'),
+    vendorEmail: pick('vendorEmail'),
+    dueDate: pick('dueDate'),
+    vendorMessage: pick('vendorMessage'),
+    at: Date.now(),
+    reason,
+  };
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); } catch {}
+}
+
+function clearDraft(){
+  try { localStorage.removeItem(DRAFT_KEY); } catch {}
+  try { localStorage.removeItem(DRAFT_TOAST_KEY); } catch {}
+}
+
+function applyDraftIfAny(){
+  const d = loadDraft();
+  if(!d) return false;
+
+  const anyValue = [d.vendorName, d.vendorCompany, d.vendorEmail, d.dueDate, d.vendorMessage].some(v => String(v||'').trim().length);
+  if(!anyValue) return false;
+
+  const form = document.getElementById('newRequestForm');
+  if(!form) return false;
+  const put = (name, val) => {
+    const el = form.querySelector(`[name="${name}"]`);
+    if(!el) return;
+    el.value = (val || '');
+  };
+
+  // Always restore on load (launch requirement). User can clear via button.
+  put('vendorName', d.vendorName);
+  put('vendorCompany', d.vendorCompany);
+  put('vendorEmail', d.vendorEmail);
+  put('dueDate', d.dueDate);
+  put('vendorMessage', d.vendorMessage);
+  return true;
+}
+
+function maybeShowToastAfterNav(){
+  try {
+    const raw = localStorage.getItem(DRAFT_TOAST_KEY);
+    if(!raw) return;
+    const info = JSON.parse(raw);
+    if(!info || !info.msg) return;
+    if(info.at && (Date.now() - info.at) > 5000) { localStorage.removeItem(DRAFT_TOAST_KEY); return; }
+    toastTR(info.msg, info.kind || 'ok');
+    localStorage.removeItem(DRAFT_TOAST_KEY);
+    return true;
+  } catch {}
+  return false;
+}
+
+function setNextToast(msg, kind='ok'){
+  try { localStorage.setItem(DRAFT_TOAST_KEY, JSON.stringify({ msg, kind, at: Date.now() })); } catch {}
+}
+
+function wireDraftUX(){
+  const form = document.getElementById('newRequestForm');
+  if(!form) return;
+
+  // Debounced autosave
+  let t = null;
+  const scheduleSave = (reason='auto') => {
+    if(t) clearTimeout(t);
+    t = setTimeout(()=>saveDraft(reason), 250);
+  };
+
+  ['vendorName','vendorCompany','vendorEmail','dueDate','vendorMessage'].forEach(name=>{
+    const el = form.querySelector(`[name="${name}"]`);
+    if(!el) return;
+    el.addEventListener('input', ()=>scheduleSave('auto'));
+    el.addEventListener('change', ()=>scheduleSave('auto'));
+  });
+
+  // Save on page leave as well
+  window.addEventListener('beforeunload', ()=>{ try { saveDraft('leave'); } catch {} });
+
+  // Template chips: save -> toast -> navigate
+  document.querySelectorAll('.tplChip').forEach(a=>{
+    a.addEventListener('click', (e)=>{
+      e.preventDefault();
+      saveDraft('template');
+      toastTR('Kaydedildi');
+      setNextToast('Geri yüklendi');
+      // allow the toast to paint, then navigate
+      setTimeout(()=>{ window.location.assign(a.href); }, 140);
+    });
+  });
+
+  // Clear draft button
+  const clearBtn = document.getElementById('clearDraftBtn');
+  if(clearBtn){
+    clearBtn.addEventListener('click', ()=>{
+      const ok = confirm('Yeni talep taslağı temizlensin mi?');
+      if(!ok) return;
+      clearDraft();
+      toastTR('Taslak temizlendi');
+      // reset page to empty docs
+      setTimeout(()=>{ window.location.assign('/app/requests/new?tpl=none#belgeler'); }, 120);
+    });
+  }
+
+  // When creating, clear draft
+  form.addEventListener('submit', ()=>{ clearDraft(); });
+}
+
+// --- end draft UX ---
+
+function escapeHtml(s){ return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
+
+function docRowHTML(i, d){
+  const req = d.required ? 'checked' : '';
+  const sig = d.requireSignature ? 'checked' : '';
+  const issue = d.issueDateRequired ? 'checked' : '';
+  const exp = d.expiryRequired ? 'checked' : '';
+  const warn = d.expiryWarnDays ? d.expiryWarnDays : (d.expiryRequired ? 30 : 0);
+
+  return `
+    <div class="card" style="margin:10px 0;">
+      <label>Belge adı</label>
+      <input name="docLabel_${i}" value="${escapeHtml(d.label||'')}" required>
+
+      <div class="row" style="margin-top:10px;flex-wrap:wrap;">
+        <label class="small" style="display:flex;gap:8px;align-items:center;">
+          <input type="checkbox" name="docRequired_${i}" ${req} style="width:auto;"> Zorunlu
+        </label>
+        <label class="small" style="display:flex;gap:8px;align-items:center;">
+          <input type="checkbox" name="docSignature_${i}" ${sig} style="width:auto;"> İmza gerekli
+        </label>
+        <label class="small" style="display:flex;gap:8px;align-items:center;">
+          <input type="checkbox" name="docIssueDate_${i}" ${issue} style="width:auto;"> Düzenleme tarihi gerekli
+        </label>
+        <label class="small" style="display:flex;gap:8px;align-items:center;">
+          <input type="checkbox" name="docExpiry_${i}" ${exp} style="width:auto;" data-action="toggle-warn"> Geçerlilik tarihi gerekli
+        </label>
+        <label class="small" style="display:flex;gap:8px;align-items:center;">
+          Uyarı gün:
+          <input type="number" min="1" max="365" name="docWarnDays_${i}" value="${warn}" data-role="warn-days" style="width:90px;" ${d.expiryRequired ? '' : 'disabled'}>
+        </label>
+      </div>
+
+      <button type="button" class="btn danger" data-action="remove-doc">Kaldır</button>
+    </div>
+  `;
+}
+
+function toggleWarn(checkbox){
+  const wrap = checkbox.closest('.card');
+  if(!wrap) return;
+  const inp = wrap.querySelector('[data-role="warn-days"]');
+  if(inp) inp.disabled = !checkbox.checked;
+}
+
+function updateEmptyHint(){
+  const wrap = document.getElementById('docs');
+  const empty = document.getElementById('docsEmpty');
+  if(!wrap || !empty) return;
+  empty.style.display = wrap.children.length ? 'none' : 'block';
+}
+
+function addDoc(d){
+  const wrap = document.getElementById('docs');
+  const i = wrap.children.length;
+  const doc = d || { label:'', required:true };
+  const row = document.createElement('div');
+  row.innerHTML = docRowHTML(i, doc);
+  wrap.appendChild(row.firstElementChild);
+  resequence();
+  updateEmptyHint();
+}
+
+function resequence(){
+  const wrap = document.getElementById('docs');
+  Array.from(wrap.children).forEach((card, idx)=>{
+    const rename = (prefix) => {
+      const el = card.querySelector(`[name^="${prefix}_"]`);
+      if (el) el.name = `${prefix}_${idx}`;
+    };
+    rename('docLabel'); rename('docRequired'); rename('docSignature'); rename('docIssueDate'); rename('docExpiry'); rename('docWarnDays');
+    const exp = card.querySelector(`[name^="docExpiry_"]`);
+    if (exp) toggleWarn(exp);
+
+    const warn = card.querySelector(`[name^="docWarnDays_"]`);
+    if (warn && exp) {
+      warn.disabled = !exp.checked;
+    }
+  });
+}
+
+// CSP-safe event wiring (no inline handlers)
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-action]');
+  if (!t) return;
+  const action = t.getAttribute('data-action');
+  if (action === 'add-doc') {
+    e.preventDefault();
+    addDoc();
+    saveDraft('saved');
+  }
+  if (action === 'remove-doc') {
+    e.preventDefault();
+    const row = t.closest('.docRow') || t.closest('.card');
+    if (row) row.remove();
+    resequence();
+    updateEmptyHint();
+    saveDraft('saved');
+  }
+});
+
+document.addEventListener('change', (e) => {
+  const cb = e.target.closest('input[data-action="toggle-warn"]');
+  if (!cb) return;
+  toggleWarn(cb);
+  saveDraft('saved');
+});
+
+// Initial population (template docs, if any). If none, starts empty.
+(defaultDocs || []).forEach(d => addDoc(d));
+updateEmptyHint();
+
+// Draft restore + autosave
+const restored = applyDraftIfAny();
+if(restored){
+  // Show "Geri yüklendi" either via queued toast (template nav) or generic restore.
+  const shown = maybeShowToastAfterNav();
+  if(!shown) toastTR('Geri yüklendi');
+}
+wireDraftUX();
+
+// Ensure #belgeler anchor scroll is reliable even on fast reloads
+if(location.hash === '#belgeler'){
+  setTimeout(()=>{
+    const el = document.getElementById('belgeler');
+    if(el) el.scrollIntoView({block:'start'});
+  }, 0);
+}
+</script>

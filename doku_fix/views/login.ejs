@@ -1,0 +1,23 @@
+<div class="grid two" style="margin-top:20px;">
+  <div class="card">
+    <h2>Giriş</h2>
+    <form method="post" action="/login">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>E-posta</label>
+      <input name="email" type="email" required placeholder="ornek@firma.com" />
+      <label>Şifre</label>
+      <input name="password" type="password" required />
+      <div class="hr"></div>
+      <button class="btn primary" type="submit">Giriş yap</button>
+      <a class="btn" href="/signup">Kayıt ol</a>
+
+      <div class="small" style="margin-top:10px;">
+        <a href="/forgot-password">Şifreni mi unuttun?</a>
+      </div>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Not</h2>
+    <div class="p">Her şirket (tenant) ayrı bir alandır. Giriş yaptıktan sonra sadece kendi taleplerini görürsün.</div>
+  </div>
+</div>
