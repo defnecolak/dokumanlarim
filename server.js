@@ -2416,13 +2416,10 @@ app.get('/app/templates/:id/edit', requireAuth, requireOwner, noStore, (req, res
   });
 });
 
-app.post('/app/templates/:id', requireAuth, requireOwner, verifyCsrf, (req, res) => {
-  const name = (req.body.name || '').trim();
-  const industry = (req.body.industry || '').trim();
-  if (!name) {
-    flash(req, 'err', 'Şablon adı zorunlu.');
-    return res.redirect(`/app/templates/${req.params.id}/edit`);
-  }
+app.post('/app/templates/:id', requireAuth, requireOwner, verifyCsrf, (req, res, next) => {
+  // /app/templates/default ve /app/templates/copy gibi statik route’lar
+  // generic :id route’u tarafından yutulmasın
+  if (req.params.id === 'default' || req.params.id === 'copy') return next('route');
 
   const docs = [];
   for (let i = 0; i < 200; i++) {
