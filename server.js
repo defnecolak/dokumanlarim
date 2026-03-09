@@ -1,4 +1,4 @@
-require('dotenv').config();
+﻿require('dotenv').config();
 
 const express = require('express');
 const path = require('path');
@@ -44,7 +44,7 @@ function maskUrl(url) {
   return String(url).replace(/\/v\/([A-Za-z0-9_-]{12,})/g, (m, token) => {
     const start = token.slice(0, 4);
     const end = token.slice(-4);
-    return `/v/${start}…${end}`;
+    return `/v/${start}â€¦${end}`;
   });
 }
 
@@ -76,7 +76,7 @@ const ENABLE_CSV_EXPORT = String(process.env.ENABLE_CSV_EXPORT || '0') === '1';
 const ENABLE_LAUNCH_CENTER = String(process.env.ENABLE_LAUNCH_CENTER || '0') === '1';
 const COOKIE_SAMESITE = (process.env.COOKIE_SAMESITE || 'lax').trim();
 
-const APP_NAME = process.env.APP_NAME || 'Dökümanlarım';
+const APP_NAME = process.env.APP_NAME || 'DÃ¶kÃ¼manlarÄ±m';
 // Public launch default support email
 const SUPPORT_EMAIL = (() => {
   const v = (process.env.SUPPORT_EMAIL || '').trim();
@@ -131,11 +131,11 @@ if (NODE_ENV === 'production') {
   const primary = keys[0] || '';
   const weak = (!primary || primary.length < 24 || primary.includes('change-me') || primary.includes('dev-secret'));
   if (weak) {
-    console.error('❌ SESSION_SECRETS/SESSION_SECRET zayıf. Production için en az 24+ karakter rastgele bir değer verin (tercihen 2+ anahtar).');
+    console.error('âŒ SESSION_SECRETS/SESSION_SECRET zayÄ±f. Production iÃ§in en az 24+ karakter rastgele bir deÄŸer verin (tercihen 2+ anahtar).');
     process.exit(1);
   }
   if (keys.length < 2) {
-    console.warn('⚠️ SESSION_SECRETS tek anahtar görünüyor. Key rotation için 2+ anahtar önerilir: SESSION_SECRETS=key1,key2');
+    console.warn('âš ï¸ SESSION_SECRETS tek anahtar gÃ¶rÃ¼nÃ¼yor. Key rotation iÃ§in 2+ anahtar Ã¶nerilir: SESSION_SECRETS=key1,key2');
   }
 }
 
@@ -162,8 +162,8 @@ const globalLimiter = rateLimit({
 app.use(globalLimiter);
 
 app.use(helmet({
-  contentSecurityPolicy: false, // iyzico checkout html/script için
-  // Token tabanlı linkler (/v/...) üçüncü taraf sitelere referer olarak sızmasın.
+  contentSecurityPolicy: false, // iyzico checkout html/script iÃ§in
+  // Token tabanlÄ± linkler (/v/...) Ã¼Ã§Ã¼ncÃ¼ taraf sitelere referer olarak sÄ±zmasÄ±n.
   referrerPolicy: { policy: 'same-origin' },
 }));
 
@@ -333,7 +333,7 @@ function ensureDbShape() {
       db.tenants = db.tenants.map(t => ({
         ...t,
         security: {
-          // Tenant seviyesinde MFA zorunluluğu (opsiyonel)
+          // Tenant seviyesinde MFA zorunluluÄŸu (opsiyonel)
           requireMfa: !!(t.security && t.security.requireMfa),
           ...(t.security || {}),
         },
@@ -397,11 +397,11 @@ ensureDbShape();
 const STATUS = ['open', 'submitted', 'approved', 'rejected', 'archived'];
 function statusLabel(s) {
   const map = {
-    open: 'Açık',
-    submitted: 'Gönderildi',
-    approved: 'Onaylandı',
+    open: 'AÃ§Ä±k',
+    submitted: 'GÃ¶nderildi',
+    approved: 'OnaylandÄ±',
     rejected: 'Reddedildi',
-    archived: 'Arşivlendi',
+    archived: 'ArÅŸivlendi',
   };
   return map[s] || s;
 }
@@ -449,31 +449,31 @@ function getDocState(reqItem, doc) {
   }
 
   if (doc.requireSignature && !u.signedConfirmed) {
-    state.errors.push('İmza bilgisi eksik');
+    state.errors.push('Ä°mza bilgisi eksik');
   }
 
   if (doc.issueDateRequired && !u.issueDate) {
-    state.errors.push('Düzenleme tarihi eksik');
+    state.errors.push('DÃ¼zenleme tarihi eksik');
   }
 
   if (doc.expiryRequired) {
     if (!u.expiryDate) {
-      state.errors.push('Geçerlilik tarihi eksik');
+      state.errors.push('GeÃ§erlilik tarihi eksik');
     } else {
       const exp = parseYmd(u.expiryDate);
       if (!exp) {
-        state.errors.push('Geçerlilik tarihi geçersiz');
+        state.errors.push('GeÃ§erlilik tarihi geÃ§ersiz');
       } else {
         const left = daysDiff(exp, startOfToday());
         state.expiryDaysLeft = left;
         if (left < 0) {
           state.expired = true;
-          state.errors.push('Süresi dolmuş');
+          state.errors.push('SÃ¼resi dolmuÅŸ');
         } else {
           const warnDays = Math.max(1, Math.min(365, parseInt(doc.expiryWarnDays || 30, 10) || 30));
           if (left <= warnDays) {
             state.expiringSoon = true;
-            state.warnings.push(`Yakında doluyor (${left} gün)`);
+            state.warnings.push(`YakÄ±nda doluyor (${left} gÃ¼n)`);
           }
         }
       }
@@ -584,7 +584,7 @@ async function sendSystemEmail({ to, subject, html, text }) {
   if (!mailer) return { ok: false, reason: 'smtp_disabled' };
   try {
     await mailer.sendMail({
-      from: process.env.SMTP_FROM || `Dökümanlarım <noreply@example.com>`,
+      from: process.env.SMTP_FROM || `DÃ¶kÃ¼manlarÄ±m <noreply@example.com>`,
       to,
       subject,
       text,
@@ -738,8 +738,8 @@ const upload = multer({
   storage: multerStorage,
   limits: { fileSize: MAX_BYTES },
   fileFilter: (req, file, cb) => {
-    // Not: Bazı tarayıcılar/OS'ler dosyayı "application/octet-stream" veya farklı PDF mime'ları ile
-    // gönderebiliyor. Bu yüzden filtre biraz toleranslı; asıl güvenlik "magic bytes" kontrolünde.
+    // Not: BazÄ± tarayÄ±cÄ±lar/OS'ler dosyayÄ± "application/octet-stream" veya farklÄ± PDF mime'larÄ± ile
+    // gÃ¶nderebiliyor. Bu yÃ¼zden filtre biraz toleranslÄ±; asÄ±l gÃ¼venlik "magic bytes" kontrolÃ¼nde.
     const allowedMimes = new Set([
       ...UPLOAD_ALLOWED_MIME,
       // Tolerate a few common variants some clients send
@@ -757,7 +757,7 @@ const upload = multer({
 
     if (ok) return cb(null, true);
 
-    const err = new Error('Bu dosya türüne izin verilmiyor. İzinli türler: PDF, JPG, PNG, WEBP, DOC/DOCX, XLS/XLSX, TXT.');
+    const err = new Error('Bu dosya tÃ¼rÃ¼ne izin verilmiyor. Ä°zinli tÃ¼rler: PDF, JPG, PNG, WEBP, DOC/DOCX, XLS/XLSX, TXT.');
     err.code = 'UNSUPPORTED_FILE_TYPE';
     err.status = 415;
     return cb(err, false);
@@ -766,8 +766,8 @@ const upload = multer({
 
 
 // Extra defense: verify basic "magic bytes" for common types. MIME can be spoofed.
-// Not: Bazı istemciler dosyayı application/octet-stream ile gönderebiliyor.
-// Bu fonksiyon uzantı + mime ipuçlarını birleştirip mümkün olduğunca doğrulama yapar.
+// Not: BazÄ± istemciler dosyayÄ± application/octet-stream ile gÃ¶nderebiliyor.
+// Bu fonksiyon uzantÄ± + mime ipuÃ§larÄ±nÄ± birleÅŸtirip mÃ¼mkÃ¼n olduÄŸunca doÄŸrulama yapar.
 function validateFileSignature(filePath, mime, originalName) {
   try {
     const ext = path.extname(originalName || '').toLowerCase();
@@ -811,8 +811,8 @@ function validateFileSignature(filePath, mime, originalName) {
       || startsWith(Buffer.from([0x50, 0x4b, 0x07, 0x08]));
     const isOLE = startsWith(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]));
 
-    // Hiç ipucu yoksa (uzantı yok + mime boş/octet-stream), sadece net güvenli tipleri
-    // (PDF + resimler) imzadan tanıyıp kabul ediyoruz.
+    // HiÃ§ ipucu yoksa (uzantÄ± yok + mime boÅŸ/octet-stream), sadece net gÃ¼venli tipleri
+    // (PDF + resimler) imzadan tanÄ±yÄ±p kabul ediyoruz.
     if (!expected) {
       return isPDF || isPNG || isJPG || isWEBP;
     }
@@ -955,7 +955,7 @@ app.get('/legal/privacy', (req, res) => {
 
 app.get('/legal/terms', (req, res) => {
   res.render('layout', {
-    title: 'Şartlar',
+    title: 'Åartlar',
     appName: APP_NAME,
     supportEmail: SUPPORT_EMAIL,
     user: null, tenant: null, plan: null,
@@ -970,7 +970,7 @@ app.get('/legal/terms', (req, res) => {
 app.get('/login', noStore, (req, res) => {
   if (req.session.userId) return res.redirect('/app/requests');
   res.render('layout', {
-    title: 'Giriş',
+    title: 'GiriÅŸ',
     appName: APP_NAME,
     supportEmail: SUPPORT_EMAIL,
     user: null, tenant: null, plan: null,
@@ -991,7 +991,7 @@ app.post('/login', noStore, loginLimiter, verifyCsrf, async (req, res) => {
     try {
       await verifyPassword(password, '$2a$10$9e0kYxkLhM3W4LrGQF3qvO/5L3yDg0aY9y0Qb0z5zR3cY2C7nL7S2');
     } catch (_) {}
-    flash(req, 'err', 'E-posta veya şifre hatalı.');
+    flash(req, 'err', 'E-posta veya ÅŸifre hatalÄ±.');
     return res.redirect('/login');
   }
 
@@ -1006,7 +1006,7 @@ app.post('/login', noStore, loginLimiter, verifyCsrf, async (req, res) => {
         path: req.originalUrl,
         ua: req.get('user-agent') || '',
       });
-      flash(req, 'err', `Çok fazla hatalı deneme. Lütfen ${LOGIN_LOCK_MINUTES} dakika sonra tekrar deneyin.`);
+      flash(req, 'err', `Ã‡ok fazla hatalÄ± deneme. LÃ¼tfen ${LOGIN_LOCK_MINUTES} dakika sonra tekrar deneyin.`);
       return res.redirect('/login');
     }
   }
@@ -1030,7 +1030,7 @@ app.post('/login', noStore, loginLimiter, verifyCsrf, async (req, res) => {
       // Optional: global security alert (SIEM/Slack)
       sendSecurityAlert({
         event: 'auth.login_lockout_triggered',
-        title: `${APP_NAME} güvenlik uyarısı: Login lockout`,
+        title: `${APP_NAME} gÃ¼venlik uyarÄ±sÄ±: Login lockout`,
         text: `E-posta: ${email}\nIP: ${req.ip}\nTenant: ${user.tenantId}\nUser: ${user.id}`,
         severity: 'warn',
         baseUrl: BASE_URL,
@@ -1046,7 +1046,7 @@ app.post('/login', noStore, loginLimiter, verifyCsrf, async (req, res) => {
       ip: req.ip,
       ua: req.get('user-agent') || '',
     });
-    flash(req, 'err', 'E-posta veya şifre hatalı.');
+    flash(req, 'err', 'E-posta veya ÅŸifre hatalÄ±.');
     return res.redirect('/login');
   }
 
@@ -1056,7 +1056,7 @@ app.post('/login', noStore, loginLimiter, verifyCsrf, async (req, res) => {
     user.loginLockedUntil = null;
     writeDB(db);
   }
-  // Email doğrulama (public SaaS standardı)
+  // Email doÄŸrulama (public SaaS standardÄ±)
   if (isEmailVerificationRequired() && user.emailVerified === false) {
     const token = randomToken(24);
     const tokenHash = sha256hex(token);
@@ -1071,19 +1071,19 @@ app.post('/login', noStore, loginLimiter, verifyCsrf, async (req, res) => {
     });
 
     const link = buildVerifyEmailLink(req, token);
-    const subject = `${APP_NAME}: E-postanı doğrula`;
-    const text = `Merhaba ${user.firstName || ''},\n\nHesabını doğrulamak için: ${link}\n\nBu link ${EMAIL_VERIFY_TTL_HOURS} saat geçerlidir.`;
-    const html = `<p>Merhaba ${escapeHtml(user.firstName || '')},</p><p>Hesabını doğrulamak için aşağıdaki linke tıkla:</p><p><a href="${link}">${link}</a></p><p>Bu link <b>${EMAIL_VERIFY_TTL_HOURS} saat</b> geçerlidir.</p>`;
+    const subject = `${APP_NAME}: E-postanÄ± doÄŸrula`;
+    const text = `Merhaba ${user.firstName || ''},\n\nHesabÄ±nÄ± doÄŸrulamak iÃ§in: ${link}\n\nBu link ${EMAIL_VERIFY_TTL_HOURS} saat geÃ§erlidir.`;
+    const html = `<p>Merhaba ${escapeHtml(user.firstName || '')},</p><p>HesabÄ±nÄ± doÄŸrulamak iÃ§in aÅŸaÄŸÄ±daki linke tÄ±kla:</p><p><a href="${link}">${link}</a></p><p>Bu link <b>${EMAIL_VERIFY_TTL_HOURS} saat</b> geÃ§erlidir.</p>`;
     const mailRes = await sendSystemEmail({ to: user.email, subject, text, html });
     if (!mailRes.ok && !IS_PROD) {
       req.session.devVerifyLink = link;
     }
 
-    flash(req, 'err', 'Giriş başarılı, fakat e-posta doğrulaması gerekiyor. Linki yeniden gönderdik.');
+    flash(req, 'err', 'GiriÅŸ baÅŸarÄ±lÄ±, fakat e-posta doÄŸrulamasÄ± gerekiyor. Linki yeniden gÃ¶nderdik.');
     return res.redirect('/verify-needed');
   }
 
-  // MFA (TOTP) – en yüksek kaldıraç güvenlik katmanı
+  // MFA (TOTP) â€“ en yÃ¼ksek kaldÄ±raÃ§ gÃ¼venlik katmanÄ±
   const tenant = db.tenants.find(t => t.id === user.tenantId) || null;
   const tenantRequiresMfa = !!(tenant && tenant.security && tenant.security.requireMfa);
 
@@ -1092,19 +1092,19 @@ app.post('/login', noStore, loginLimiter, verifyCsrf, async (req, res) => {
     req.session.mfaPendingUserId = user.id;
     req.session.mfaSetupRequired = true;
     req.session.postLoginRedirect = '/app/requests';
-    flash(req, 'err', 'Güvenlik için MFA zorunlu. Devam etmek için MFA kurulumunu tamamla.');
+    flash(req, 'err', 'GÃ¼venlik iÃ§in MFA zorunlu. Devam etmek iÃ§in MFA kurulumunu tamamla.');
     return res.redirect('/mfa/setup');
   }
 
   if (user.mfaEnabled) {
     req.session.mfaPendingUserId = user.id;
     req.session.postLoginRedirect = '/app/requests';
-    flash(req, 'ok', 'Giriş başarılı. MFA kodunu gir.');
+    flash(req, 'ok', 'GiriÅŸ baÅŸarÄ±lÄ±. MFA kodunu gir.');
     return res.redirect('/mfa');
   }
 
   req.session.userId = user.id;
-  flash(req, 'ok', 'Giriş başarılı.');
+  flash(req, 'ok', 'GiriÅŸ baÅŸarÄ±lÄ±.');
   return res.redirect('/app/requests');
 });
 
@@ -1122,12 +1122,12 @@ app.get('/mfa', noStore, (req, res) => {
   if (!user) {
     req.session.mfaPendingUserId = null;
     req.session.mfaSetupRequired = null;
-    flash(req, 'err', 'Oturum bulunamadı. Lütfen tekrar giriş yap.');
+    flash(req, 'err', 'Oturum bulunamadÄ±. LÃ¼tfen tekrar giriÅŸ yap.');
     return res.redirect('/login');
   }
 
   return res.render('layout', {
-    title: 'MFA Doğrulama',
+    title: 'MFA DoÄŸrulama',
     appName: APP_NAME,
     supportEmail: SUPPORT_EMAIL,
     user: null,
@@ -1158,7 +1158,7 @@ app.post('/mfa', noStore, mfaLimiter, verifyCsrf, (req, res) => {
       ua: req.headers['user-agent'],
       requestId: req.requestId,
     });
-    flash(req, 'err', 'MFA bulunamadı. Lütfen tekrar giriş yap.');
+    flash(req, 'err', 'MFA bulunamadÄ±. LÃ¼tfen tekrar giriÅŸ yap.');
     req.session.mfaPendingUserId = null;
     req.session.mfaSetupRequired = null;
     return res.redirect('/login');
@@ -1198,8 +1198,8 @@ app.post('/mfa', noStore, mfaLimiter, verifyCsrf, (req, res) => {
     if (req.session.mfaFailCount >= 10) {
       // Hard fail: require fresh password
       sendSecurityAlert({
-        title: 'MFA bruteforce şüphesi',
-        text: `10+ hatalı MFA denemesi. userId=${user.id} ip=${req.ip}`,
+        title: 'MFA bruteforce ÅŸÃ¼phesi',
+        text: `10+ hatalÄ± MFA denemesi. userId=${user.id} ip=${req.ip}`,
         severity: 'warn',
         baseUrl: BASE_URL,
         meta: { userId: user.id, ip: req.ip },
@@ -1207,10 +1207,10 @@ app.post('/mfa', noStore, mfaLimiter, verifyCsrf, (req, res) => {
       req.session.mfaPendingUserId = null;
       req.session.mfaSetupRequired = null;
       req.session.mfaFailCount = 0;
-      flash(req, 'err', 'Çok fazla hatalı deneme. Lütfen tekrar giriş yap.');
+      flash(req, 'err', 'Ã‡ok fazla hatalÄ± deneme. LÃ¼tfen tekrar giriÅŸ yap.');
       return res.redirect('/login');
     }
-    flash(req, 'err', 'Kod yanlış. Tekrar dene.');
+    flash(req, 'err', 'Kod yanlÄ±ÅŸ. Tekrar dene.');
     return res.redirect('/mfa');
   }
 
@@ -1228,7 +1228,7 @@ app.post('/mfa', noStore, mfaLimiter, verifyCsrf, (req, res) => {
 
   const redirectTo = req.session.postLoginRedirect || '/app/requests';
   req.session.postLoginRedirect = null;
-  flash(req, 'ok', 'MFA doğrulandı.');
+  flash(req, 'ok', 'MFA doÄŸrulandÄ±.');
   return res.redirect(redirectTo);
 });
 
@@ -1243,7 +1243,7 @@ app.get('/mfa/setup', noStore, (req, res) => {
   const uid = req.session.mfaPendingUserId || req.session.userId;
   const user = db.users.find(u => u.id === uid);
   if (!user) {
-    flash(req, 'err', 'Oturum bulunamadı.');
+    flash(req, 'err', 'Oturum bulunamadÄ±.');
     return res.redirect('/login');
   }
 
@@ -1285,7 +1285,7 @@ app.post('/mfa/setup', noStore, mfaLimiter, verifyCsrf, (req, res) => {
   const code = String(req.body.code || '').replace(/\s+/g, '').replace(/-/g, '');
   const secret = req.session.mfaTempSecret;
   if (!secret) {
-    flash(req, 'err', 'Kurulum oturumu süresi doldu. Lütfen tekrar dene.');
+    flash(req, 'err', 'Kurulum oturumu sÃ¼resi doldu. LÃ¼tfen tekrar dene.');
     return res.redirect('/mfa/setup');
   }
 
@@ -1296,14 +1296,14 @@ app.post('/mfa/setup', noStore, mfaLimiter, verifyCsrf, (req, res) => {
       ua: req.headers['user-agent'],
       requestId: req.requestId,
     });
-    flash(req, 'err', 'Kod yanlış. Tekrar dene.');
+    flash(req, 'err', 'Kod yanlÄ±ÅŸ. Tekrar dene.');
     return res.redirect('/mfa/setup');
   }
 
   const db = readDB();
   const user = db.users.find(u => u.id === uid);
   if (!user) {
-    flash(req, 'err', 'Kullanıcı bulunamadı.');
+    flash(req, 'err', 'KullanÄ±cÄ± bulunamadÄ±.');
     return res.redirect('/login');
   }
 
@@ -1328,14 +1328,14 @@ app.post('/mfa/setup', noStore, mfaLimiter, verifyCsrf, (req, res) => {
     requestId: req.requestId,
   });
   sendSecurityAlert({
-    title: 'MFA etkinleştirildi',
+    title: 'MFA etkinleÅŸtirildi',
     text: `userId=${user.id} tenantId=${user.tenantId} ip=${req.ip}`,
     severity: 'info',
     baseUrl: BASE_URL,
     meta: { userId: user.id, tenantId: user.tenantId },
   }).catch(() => {});
 
-  flash(req, 'ok', 'MFA kuruldu. Yedek kodları kaydet.');
+  flash(req, 'ok', 'MFA kuruldu. Yedek kodlarÄ± kaydet.');
   return res.redirect('/mfa/done');
 });
 
@@ -1368,7 +1368,7 @@ app.get('/mfa/done', noStore, (req, res) => {
 app.post('/mfa/done', noStore, verifyCsrf, (req, res) => {
   // Clear backup codes from session (they are already stored hashed in DB)
   req.session.mfaNewBackupCodes = null;
-  flash(req, 'ok', 'Tamamdır.');
+  flash(req, 'ok', 'TamamdÄ±r.');
   return res.redirect('/app/requests');
 });
 
@@ -1378,7 +1378,7 @@ app.get('/signup', noStore, (req, res) => {
   const draft = req.session.signupDraft || null;
   const captcha = issueSignupCaptcha(req);
   res.render('layout', {
-    title: 'Kayıt',
+    title: 'KayÄ±t',
     appName: APP_NAME,
     supportEmail: SUPPORT_EMAIL,
     user: null, tenant: null, plan: null,
@@ -1401,21 +1401,21 @@ app.post('/signup', noStore, loginLimiter, verifyCsrf, async (req, res) => {
   req.session.signupDraft = { tenantName, firstName, lastName, email, at: Date.now() };
 
   if (!tenantName || !firstName || !lastName || !email || password.length < 8) {
-    flash(req, 'err', 'Lütfen tüm alanları doldurun (şifre en az 8 karakter).');
+    flash(req, 'err', 'LÃ¼tfen tÃ¼m alanlarÄ± doldurun (ÅŸifre en az 8 karakter).');
     return res.redirect('/signup');
   }
 
-  // CAPTCHA (signup) – Turnstile varsa onu zorunlu tut
+  // CAPTCHA (signup) â€“ Turnstile varsa onu zorunlu tut
   if (isTurnstileEnabled()) {
     const v = await verifyTurnstileResponse(req);
     if (!v.ok) {
-      flash(req, 'err', 'İnsan doğrulaması başarısız. Lütfen tekrar dene.');
+      flash(req, 'err', 'Ä°nsan doÄŸrulamasÄ± baÅŸarÄ±sÄ±z. LÃ¼tfen tekrar dene.');
       return res.redirect('/signup');
     }
   } else {
     const v = verifySignupCaptcha(req);
     if (!v.ok) {
-      flash(req, 'err', 'İnsan doğrulaması başarısız. Lütfen soruyu doğru cevapla.');
+      flash(req, 'err', 'Ä°nsan doÄŸrulamasÄ± baÅŸarÄ±sÄ±z. LÃ¼tfen soruyu doÄŸru cevapla.');
       return res.redirect('/signup');
     }
   }
@@ -1476,7 +1476,7 @@ app.post('/signup', noStore, loginLimiter, verifyCsrf, async (req, res) => {
     });
 
     if (!result.ok) {
-      flash(req, 'err', 'Bu e-posta zaten kayıtlı.');
+      flash(req, 'err', 'Bu e-posta zaten kayÄ±tlÄ±.');
       return res.redirect('/signup');
     }
     req.session.userId = result.userId;
@@ -1485,20 +1485,20 @@ app.post('/signup', noStore, loginLimiter, verifyCsrf, async (req, res) => {
 
     if (needsVerify) {
       const link = buildVerifyEmailLink(req, verifyToken);
-      const subject = `${APP_NAME}: E-postanı doğrula`;
-      const text = `Merhaba ${firstName},\n\nHesabını doğrulamak için: ${link}\n\nBu link ${EMAIL_VERIFY_TTL_HOURS} saat geçerlidir.\n\n— ${APP_NAME}`;
-      const html = `<p>Merhaba ${escapeHtml(firstName)},</p><p>Hesabını doğrulamak için aşağıdaki linke tıkla:</p><p><a href="${link}">${link}</a></p><p>Bu link <b>${EMAIL_VERIFY_TTL_HOURS} saat</b> geçerlidir.</p><p>— ${escapeHtml(APP_NAME)}</p>`;
+      const subject = `${APP_NAME}: E-postanÄ± doÄŸrula`;
+      const text = `Merhaba ${firstName},\n\nHesabÄ±nÄ± doÄŸrulamak iÃ§in: ${link}\n\nBu link ${EMAIL_VERIFY_TTL_HOURS} saat geÃ§erlidir.\n\nâ€” ${APP_NAME}`;
+      const html = `<p>Merhaba ${escapeHtml(firstName)},</p><p>HesabÄ±nÄ± doÄŸrulamak iÃ§in aÅŸaÄŸÄ±daki linke tÄ±kla:</p><p><a href="${link}">${link}</a></p><p>Bu link <b>${EMAIL_VERIFY_TTL_HOURS} saat</b> geÃ§erlidir.</p><p>â€” ${escapeHtml(APP_NAME)}</p>`;
       const mailRes = await sendSystemEmail({ to: email, subject, text, html });
       if (!mailRes.ok && !IS_PROD) req.session.devVerifyLink = link;
-      flash(req, 'ok', 'Hesap oluşturuldu. E-posta doğrulama linki gönderildi.');
+      flash(req, 'ok', 'Hesap oluÅŸturuldu. E-posta doÄŸrulama linki gÃ¶nderildi.');
       return res.redirect('/verify-needed');
     }
 
-    flash(req, 'ok', 'Hesap oluşturuldu.');
+    flash(req, 'ok', 'Hesap oluÅŸturuldu.');
     return res.redirect('/app/requests');
   } catch (e) {
     console.error(e);
-    flash(req, 'err', 'Kayıt sırasında hata oluştu.');
+    flash(req, 'err', 'KayÄ±t sÄ±rasÄ±nda hata oluÅŸtu.');
     return res.redirect('/signup');
   }
 });
@@ -1512,7 +1512,7 @@ app.get('/verify-needed', noStore, requireAuthLoose, (req, res) => {
   const emailEnabled = !!getMailer();
   const devVerifyLink = (!IS_PROD ? (req.session.devVerifyLink || null) : null);
   res.render('layout', {
-    title: 'E-posta doğrulama',
+    title: 'E-posta doÄŸrulama',
     appName: APP_NAME,
     supportEmail: SUPPORT_EMAIL,
     user: req.user,
@@ -1547,20 +1547,20 @@ app.post('/verify-email/resend', noStore, requireAuthLoose, loginLimiter, verify
   });
 
   const link = buildVerifyEmailLink(req, token);
-  const subject = `${APP_NAME}: E-postanı doğrula`;
-  const text = `Merhaba ${req.user.firstName || ''},\n\nHesabını doğrulamak için: ${link}\n\nBu link ${EMAIL_VERIFY_TTL_HOURS} saat geçerlidir.`;
-  const html = `<p>Merhaba ${escapeHtml(req.user.firstName || '')},</p><p>Hesabını doğrulamak için:</p><p><a href="${link}">${link}</a></p><p>Bu link <b>${EMAIL_VERIFY_TTL_HOURS} saat</b> geçerlidir.</p>`;
+  const subject = `${APP_NAME}: E-postanÄ± doÄŸrula`;
+  const text = `Merhaba ${req.user.firstName || ''},\n\nHesabÄ±nÄ± doÄŸrulamak iÃ§in: ${link}\n\nBu link ${EMAIL_VERIFY_TTL_HOURS} saat geÃ§erlidir.`;
+  const html = `<p>Merhaba ${escapeHtml(req.user.firstName || '')},</p><p>HesabÄ±nÄ± doÄŸrulamak iÃ§in:</p><p><a href="${link}">${link}</a></p><p>Bu link <b>${EMAIL_VERIFY_TTL_HOURS} saat</b> geÃ§erlidir.</p>`;
   const mailRes = await sendSystemEmail({ to: req.user.email, subject, text, html });
   if (!mailRes.ok && !IS_PROD) req.session.devVerifyLink = link;
 
-  flash(req, 'ok', 'Doğrulama linki yeniden gönderildi.');
+  flash(req, 'ok', 'DoÄŸrulama linki yeniden gÃ¶nderildi.');
   return res.redirect('/verify-needed');
 });
 
 app.get('/verify-email', noStore, (req, res) => {
   const token = (req.query.token || '').trim();
   if (!token) {
-    flash(req, 'err', 'Doğrulama linki geçersiz.');
+    flash(req, 'err', 'DoÄŸrulama linki geÃ§ersiz.');
     return res.redirect('/login');
   }
   const tokenHash = sha256hex(token);
@@ -1580,21 +1580,21 @@ app.get('/verify-email', noStore, (req, res) => {
 
   if (!result.ok) {
     const msg = result.reason === 'expired'
-      ? 'Doğrulama linkinin süresi dolmuş. Lütfen yeniden gönder.'
-      : 'Doğrulama linki geçersiz.';
+      ? 'DoÄŸrulama linkinin sÃ¼resi dolmuÅŸ. LÃ¼tfen yeniden gÃ¶nder.'
+      : 'DoÄŸrulama linki geÃ§ersiz.';
     flash(req, 'err', msg);
     return res.redirect('/login');
   }
 
   req.session.userId = result.userId;
-  flash(req, 'ok', 'E-posta doğrulandı. Hoş geldin!');
+  flash(req, 'ok', 'E-posta doÄŸrulandÄ±. HoÅŸ geldin!');
   return res.redirect('/app/requests');
 });
 
 app.get('/forgot-password', noStore, (req, res) => {
   if (req.session.userId) return res.redirect('/app/requests');
   res.render('layout', {
-    title: 'Şifre sıfırlama',
+    title: 'Åifre sÄ±fÄ±rlama',
     appName: APP_NAME,
     supportEmail: SUPPORT_EMAIL,
     user: null, tenant: null, plan: null,
@@ -1608,10 +1608,10 @@ app.get('/forgot-password', noStore, (req, res) => {
 app.post('/forgot-password', noStore, loginLimiter, verifyCsrf, async (req, res) => {
   const email = (req.body.email || '').trim().toLowerCase();
   // Always respond the same to prevent email enumeration
-  const generic = 'Eğer bu e-posta sistemde kayıtlıysa şifre sıfırlama linki gönderildi.';
+  const generic = 'EÄŸer bu e-posta sistemde kayÄ±tlÄ±ysa ÅŸifre sÄ±fÄ±rlama linki gÃ¶nderildi.';
 
   if (!email) {
-    flash(req, 'err', 'Lütfen e-posta gir.');
+    flash(req, 'err', 'LÃ¼tfen e-posta gir.');
     return res.redirect('/forgot-password');
   }
 
@@ -1629,9 +1629,9 @@ app.post('/forgot-password', noStore, loginLimiter, verifyCsrf, async (req, res)
 
   if (found.ok) {
     const link = buildResetPasswordLink(req, token);
-    const subject = `${APP_NAME}: Şifre sıfırlama`;
-    const text = `Şifre sıfırlama linki: ${link}\n\nBu link ${PASSWORD_RESET_TTL_MINUTES} dakika geçerlidir.`;
-    const html = `<p>Şifreni sıfırlamak için aşağıdaki linki kullan:</p><p><a href="${link}">${link}</a></p><p>Bu link <b>${PASSWORD_RESET_TTL_MINUTES} dakika</b> geçerlidir.</p>`;
+    const subject = `${APP_NAME}: Åifre sÄ±fÄ±rlama`;
+    const text = `Åifre sÄ±fÄ±rlama linki: ${link}\n\nBu link ${PASSWORD_RESET_TTL_MINUTES} dakika geÃ§erlidir.`;
+    const html = `<p>Åifreni sÄ±fÄ±rlamak iÃ§in aÅŸaÄŸÄ±daki linki kullan:</p><p><a href="${link}">${link}</a></p><p>Bu link <b>${PASSWORD_RESET_TTL_MINUTES} dakika</b> geÃ§erlidir.</p>`;
     const mailRes = await sendSystemEmail({ to: email, subject, text, html });
     if (!mailRes.ok && !IS_PROD) {
       req.session.devResetLink = link;
@@ -1645,25 +1645,25 @@ app.post('/forgot-password', noStore, loginLimiter, verifyCsrf, async (req, res)
 app.get('/reset-password', noStore, (req, res) => {
   const token = (req.query.token || '').trim();
   if (!token) {
-    flash(req, 'err', 'Şifre sıfırlama linki geçersiz.');
+    flash(req, 'err', 'Åifre sÄ±fÄ±rlama linki geÃ§ersiz.');
     return res.redirect('/forgot-password');
   }
   const tokenHash = sha256hex(token);
   const db = readDB();
   const u = (db.users || []).find(x => x.resetTokenHash === tokenHash);
   if (!u) {
-    flash(req, 'err', 'Şifre sıfırlama linki geçersiz veya kullanılmış.');
+    flash(req, 'err', 'Åifre sÄ±fÄ±rlama linki geÃ§ersiz veya kullanÄ±lmÄ±ÅŸ.');
     return res.redirect('/forgot-password');
   }
   if (u.resetTokenExpiresAt) {
     const exp = new Date(u.resetTokenExpiresAt).getTime();
     if (Number.isFinite(exp) && Date.now() > exp) {
-      flash(req, 'err', 'Şifre sıfırlama linkinin süresi dolmuş.');
+      flash(req, 'err', 'Åifre sÄ±fÄ±rlama linkinin sÃ¼resi dolmuÅŸ.');
       return res.redirect('/forgot-password');
     }
   }
   res.render('layout', {
-    title: 'Yeni şifre',
+    title: 'Yeni ÅŸifre',
     appName: APP_NAME,
     supportEmail: SUPPORT_EMAIL,
     user: null, tenant: null, plan: null,
@@ -1679,11 +1679,11 @@ app.post('/reset-password', noStore, loginLimiter, verifyCsrf, async (req, res) 
   const password = String(req.body.password || '');
   const password2 = String(req.body.password2 || '');
   if (!token) {
-    flash(req, 'err', 'Şifre sıfırlama linki geçersiz.');
+    flash(req, 'err', 'Åifre sÄ±fÄ±rlama linki geÃ§ersiz.');
     return res.redirect('/forgot-password');
   }
   if (password.length < 8 || password !== password2) {
-    flash(req, 'err', 'Şifre en az 8 karakter olmalı ve eşleşmeli.');
+    flash(req, 'err', 'Åifre en az 8 karakter olmalÄ± ve eÅŸleÅŸmeli.');
     return res.redirect(`/reset-password?token=${encodeURIComponent(token)}`);
   }
 
@@ -1700,7 +1700,7 @@ app.post('/reset-password', noStore, loginLimiter, verifyCsrf, async (req, res) 
     u.passHash = passHash;
     delete u.resetTokenHash;
     delete u.resetTokenExpiresAt;
-    // Reset linki e-posta kontrolü sayılır: doğrulanmamışsa doğrula
+    // Reset linki e-posta kontrolÃ¼ sayÄ±lÄ±r: doÄŸrulanmamÄ±ÅŸsa doÄŸrula
     if (u.emailVerified === false) u.emailVerified = true;
     delete u.verifyTokenHash;
     delete u.verifyTokenExpiresAt;
@@ -1709,14 +1709,14 @@ app.post('/reset-password', noStore, loginLimiter, verifyCsrf, async (req, res) 
 
   if (!result.ok) {
     const msg = result.reason === 'expired'
-      ? 'Şifre sıfırlama linkinin süresi dolmuş.'
-      : 'Şifre sıfırlama linki geçersiz veya kullanılmış.';
+      ? 'Åifre sÄ±fÄ±rlama linkinin sÃ¼resi dolmuÅŸ.'
+      : 'Åifre sÄ±fÄ±rlama linki geÃ§ersiz veya kullanÄ±lmÄ±ÅŸ.';
     flash(req, 'err', msg);
     return res.redirect('/forgot-password');
   }
 
   req.session.userId = result.userId;
-  flash(req, 'ok', 'Şifre güncellendi.');
+  flash(req, 'ok', 'Åifre gÃ¼ncellendi.');
   return res.redirect('/app/requests');
 });
 
@@ -1766,7 +1766,7 @@ app.post('/invite/:token', noStore, loginLimiter, verifyCsrf, async (req, res) =
   const password2 = String(req.body.password2 || '');
 
   if (!firstName || !lastName || password.length < 8 || password !== password2) {
-    flash(req, 'err', 'Lütfen bilgileri kontrol edin (şifre en az 8 karakter ve eşleşmeli).');
+    flash(req, 'err', 'LÃ¼tfen bilgileri kontrol edin (ÅŸifre en az 8 karakter ve eÅŸleÅŸmeli).');
     return res.redirect(`/invite/${token}`);
   }
 
@@ -1812,16 +1812,16 @@ app.post('/invite/:token', noStore, loginLimiter, verifyCsrf, async (req, res) =
 
   if (!result.ok) {
     const msg = {
-      invalid: 'Davet linki geçersiz veya süresi dolmuş.',
-      email_exists: 'Bu e-posta zaten kayıtlı.',
-      plan_limit: 'Plan kullanıcı limiti dolu. Owner plan yükseltmeli.',
+      invalid: 'Davet linki geÃ§ersiz veya sÃ¼resi dolmuÅŸ.',
+      email_exists: 'Bu e-posta zaten kayÄ±tlÄ±.',
+      plan_limit: 'Plan kullanÄ±cÄ± limiti dolu. Owner plan yÃ¼kseltmeli.',
     }[result.reason] || 'Davet kabul edilemedi.';
     flash(req, 'err', msg);
     return res.redirect(`/invite/${token}`);
   }
 
   req.session.userId = result.userId;
-  flash(req, 'ok', 'Hoş geldin! Hesabın oluşturuldu.');
+  flash(req, 'ok', 'HoÅŸ geldin! HesabÄ±n oluÅŸturuldu.');
   return res.redirect('/app/requests');
 });
 
@@ -1876,7 +1876,7 @@ app.get('/v/:token', vendorLimiter, loadVendorRequest, noStore, (req, res) => {
   }
 
   res.render('layout', {
-    title: 'Belge Yükleme',
+    title: 'Belge YÃ¼kleme',
     appName: APP_NAME,
     supportEmail: SUPPORT_EMAIL,
     user: null,
@@ -1901,15 +1901,15 @@ app.get('/v/:token', vendorLimiter, loadVendorRequest, noStore, (req, res) => {
 });
 
 // NOTE: Multipart (multer) must run BEFORE CSRF verification so req.body._csrf exists.
-// Otherwise vendor uploads can fail with "CSRF token hatalı.".
+// Otherwise vendor uploads can fail with "CSRF token hatalÄ±.".
 app.get('/v/:token/upload/:docId', vendorLimiter, loadVendorRequest, (req, res) => {
-  // Bu endpoint sadece POST (multipart) ile kullanılmalı.
-  addFlash(req, 'Dosya yüklemek için önce ilgili satırdan dosya seçmelisin.', 'err');
+  // Bu endpoint sadece POST (multipart) ile kullanÄ±lmalÄ±.
+  addFlash(req, 'Dosya yÃ¼klemek iÃ§in Ã¶nce ilgili satÄ±rdan dosya seÃ§melisin.', 'err');
   return res.redirect(`/v/${req.params.token}`);
 });
 
 app.get('/v/:token/upload', vendorLimiter, loadVendorRequest, (req, res) => {
-  addFlash(req, 'Dosya yüklemek için önce ilgili satırdan dosya seçmelisin.', 'err');
+  addFlash(req, 'Dosya yÃ¼klemek iÃ§in Ã¶nce ilgili satÄ±rdan dosya seÃ§melisin.', 'err');
   return res.redirect(`/v/${req.params.token}`);
 });
 
@@ -1924,7 +1924,7 @@ app.post('/v/:token/upload/:docId', vendorLimiter, loadVendorRequest, upload.sin
 
   const file = req.file;
   if (!file) {
-    const payload = { ok: false, error: 'Dosya seçilmedi.' };
+    const payload = { ok: false, error: 'Dosya seÃ§ilmedi.' };
     if (wantsJson(req) || String(req.get('x-auto-upload') || '').trim() === '1') return res.status(400).json(payload);
     flash(req, 'err', payload.error);
     return res.redirect(`/v/${accessToken}`);
@@ -1933,7 +1933,7 @@ app.post('/v/:token/upload/:docId', vendorLimiter, loadVendorRequest, upload.sin
 	  // MIME can be spoofed; validate a few common formats by their file signatures.
 	  if (!validateFileSignature(file.path, (file.mimetype || '').toLowerCase(), file.originalname)) {
 	    try { fs.unlinkSync(file.path); } catch {}
-	    const payload = { ok: false, error: 'Dosya türü doğrulanamadı. Lütfen PDF / görsel / Office dosyası yükleyin.' };
+	    const payload = { ok: false, error: 'Dosya tÃ¼rÃ¼ doÄŸrulanamadÄ±. LÃ¼tfen PDF / gÃ¶rsel / Office dosyasÄ± yÃ¼kleyin.' };
 	    if (wantsJson(req) || String(req.get('x-auto-upload') || '').trim() === '1') return res.status(415).json(payload);
 	    flash(req, 'err', payload.error);
 	    return res.redirect(`/v/${accessToken}`);
@@ -1967,7 +1967,7 @@ app.post('/v/:token/upload/:docId', vendorLimiter, loadVendorRequest, upload.sin
     }
   } catch (e) {
     console.error('storage upload failed', e.message);
-    const payload = { ok: false, error: 'Dosya yüklenemedi. Storage ayarlarını kontrol edin.' };
+    const payload = { ok: false, error: 'Dosya yÃ¼klenemedi. Storage ayarlarÄ±nÄ± kontrol edin.' };
     if (wantsJson(req) || String(req.get('x-auto-upload') || '').trim() === '1') return res.status(500).json(payload);
     flash(req, 'err', payload.error);
     return res.redirect(`/v/${accessToken}`);
@@ -2033,7 +2033,7 @@ app.post('/v/:token/upload/:docId', vendorLimiter, loadVendorRequest, upload.sin
         doc: {
           id: docId,
           label: docNow?.label || doc.label,
-          state: st ? (st.errors.length ? `Hata: ${st.errors.join(' / ')}` : (st.warnings.length ? `Uyarı: ${st.warnings.join(' / ')}` : 'OK')) : 'OK',
+          state: st ? (st.errors.length ? `Hata: ${st.errors.join(' / ')}` : (st.warnings.length ? `UyarÄ±: ${st.warnings.join(' / ')}` : 'OK')) : 'OK',
         },
         actor: participant ? { role: participant.role, email: participant.email || null, name: participant.name || null } : null,
         links: { request: `${baseUrl}/app/requests/${reqItem.id}` },
@@ -2046,7 +2046,7 @@ app.post('/v/:token/upload/:docId', vendorLimiter, loadVendorRequest, upload.sin
     return res.json({ ok: true });
   }
 
-  flash(req, 'ok', 'Yüklendi.');
+  flash(req, 'ok', 'YÃ¼klendi.');
   res.redirect(`/v/${accessToken}`);
 });
 
@@ -2090,7 +2090,7 @@ app.post('/v/:token/meta/:docId', vendorLimiter, loadVendorRequest, verifyCsrf, 
     });
   });
 
-  flash(req, 'ok', 'Bilgiler güncellendi.');
+  flash(req, 'ok', 'Bilgiler gÃ¼ncellendi.');
   res.redirect(`/v/${accessToken}`);
 });
 
@@ -2100,7 +2100,7 @@ app.post('/v/:token/participants/invite', vendorLimiter, loadVendorRequest, veri
   const participant = req.vendorParticipant;
 
   if (participant && participant.canSubmit === false) {
-    flash(req, 'err', 'Bu link ile kişi davet edemezsiniz.');
+    flash(req, 'err', 'Bu link ile kiÅŸi davet edemezsiniz.');
     return res.redirect(`/v/${accessToken}`);
   }
 
@@ -2159,13 +2159,13 @@ app.post('/v/:token/participants/invite', vendorLimiter, loadVendorRequest, veri
       await mailer.sendMail({
         from: process.env.SMTP_FROM || `${APP_NAME} <noreply@example.com>`,
         to: email,
-        subject: `Belge yükleme daveti (${role.replace('_',' ')}) — ${reqItem.vendor.name}`,
+        subject: `Belge yÃ¼kleme daveti (${role.replace('_',' ')}) â€” ${reqItem.vendor.name}`,
         text: `Merhaba${name ? ' ' + name : ''},
 
-Bu link ile belge yükleyebilirsiniz:
+Bu link ile belge yÃ¼kleyebilirsiniz:
 ${link}
 
-Not: ${canSubmit ? 'Bu link ile belgeleri gönderebilirsiniz (Yetkili).' : 'Bu link ile sadece belge yükleyebilirsiniz. “Gönder” için yetkili linki gerekir.'}
+Not: ${canSubmit ? 'Bu link ile belgeleri gÃ¶nderebilirsiniz (Yetkili).' : 'Bu link ile sadece belge yÃ¼kleyebilirsiniz. â€œGÃ¶nderâ€ iÃ§in yetkili linki gerekir.'}
 
 `,
       });
@@ -2174,7 +2174,7 @@ Not: ${canSubmit ? 'Bu link ile belgeleri gönderebilirsiniz (Yetkili).' : 'Bu l
     }
   }
 
-  flash(req, 'ok', `Davet linki oluşturuldu: ${link}`);
+  flash(req, 'ok', `Davet linki oluÅŸturuldu: ${link}`);
   res.redirect(`/v/${accessToken}`);
 });
 
@@ -2186,14 +2186,14 @@ app.post('/v/:token/submit', vendorLimiter, loadVendorRequest, verifyCsrf, async
   const participant = req.vendorParticipant;
 
   if (participant && participant.canSubmit === false) {
-    flash(req, 'err', 'Bu link ile “Gönder” işlemi yapılamaz. Lütfen yetkili linkini kullanın.');
+    flash(req, 'err', 'Bu link ile â€œGÃ¶nderâ€ iÅŸlemi yapÄ±lamaz. LÃ¼tfen yetkili linkini kullanÄ±n.');
     return res.redirect(`/v/${accessToken}`);
   }
 
   const progress = computeProgress(reqItem);
   const canSubmit = progress.done === progress.required;
   if (!canSubmit) {
-    flash(req, 'err', 'Zorunlu belgeler tamamlanmadan gönderemezsiniz. (İmza/geçerlilik kontrolleri de dahil)');
+    flash(req, 'err', 'Zorunlu belgeler tamamlanmadan gÃ¶nderemezsiniz. (Ä°mza/geÃ§erlilik kontrolleri de dahil)');
     return res.redirect(`/v/${accessToken}`);
   }
 
@@ -2215,7 +2215,7 @@ app.post('/v/:token/submit', vendorLimiter, loadVendorRequest, verifyCsrf, async
     return r;
   });
 
-  // optional notify tenant (notifyEmail veya owner) + (isteğe bağlı) global ADMIN_NOTIFY_EMAIL
+  // optional notify tenant (notifyEmail veya owner) + (isteÄŸe baÄŸlÄ±) global ADMIN_NOTIFY_EMAIL
   const dbNow = readDB();
   const notifyTo = getTenantNotifyEmail(dbNow, updated.tenantId);
   const globalNotify = (process.env.ADMIN_NOTIFY_EMAIL || '').trim(); // SaaS owner istersen
@@ -2227,11 +2227,11 @@ app.post('/v/:token/submit', vendorLimiter, loadVendorRequest, verifyCsrf, async
       await mailer.sendMail({
         from: process.env.SMTP_FROM || `${APP_NAME} <noreply@example.com>`,
         to: toList.join(','),
-        subject: `Tedarikçi belgeleri gönderdi: ${updated.vendor.name}`,
-        text: `Şirket: ${(dbNow.tenants.find(t => t.id === updated.tenantId)?.name) || ''}
+        subject: `TedarikÃ§i belgeleri gÃ¶nderdi: ${updated.vendor.name}`,
+        text: `Åirket: ${(dbNow.tenants.find(t => t.id === updated.tenantId)?.name) || ''}
 Talep: ${updated.id}
-Durum: Gönderildi
-Gönderen: ${updated.submittedBy?.role || 'vendor'} ${updated.submittedBy?.email || ''}
+Durum: GÃ¶nderildi
+GÃ¶nderen: ${updated.submittedBy?.role || 'vendor'} ${updated.submittedBy?.email || ''}
 
 Panel: ${getBaseUrl(req)}/app/requests/${updated.id}
 `,
@@ -2258,13 +2258,13 @@ Panel: ${getBaseUrl(req)}/app/requests/${updated.id}
     }).catch(e => console.warn('notify vendor.submitted failed', e.message));
   } catch (e) {}
 
-  flash(req, 'ok', 'Gönderildi. Teşekkürler.');
+  flash(req, 'ok', 'GÃ¶nderildi. TeÅŸekkÃ¼rler.');
   res.redirect(`/v/${accessToken}`);
 });
 
 // --- App routes ---
 
-// Templates (Şablonlar)
+// Templates (Åablonlar)
 app.get('/app/templates', requireAuth, requireOwner, noStore, (req, res) => {
   const db = readDB();
   const plan = getPlanForTenant(db, req.tenant.id);
@@ -2274,7 +2274,7 @@ app.get('/app/templates', requireAuth, requireOwner, noStore, (req, res) => {
     .sort((a,b) => (b.updatedAt||'').localeCompare(a.updatedAt||''));
 
   res.render('layout', {
-    title: 'Şablonlar',
+    title: 'Åablonlar',
     appName: APP_NAME,
     supportEmail: SUPPORT_EMAIL,
     user: req.user,
@@ -2300,7 +2300,7 @@ app.get('/app/templates/new', requireAuth, requireOwner, noStore, (req, res) => 
   const fromTpl = from ? findTemplateById(db, req.tenant.id, from) : null;
 
   res.render('layout', {
-    title: 'Yeni Şablon',
+    title: 'Yeni Åablon',
     appName: APP_NAME,
     supportEmail: SUPPORT_EMAIL,
     user: req.user,
@@ -2329,7 +2329,7 @@ app.post('/app/templates', requireAuth, requireOwner, verifyCsrf, (req, res) => 
   const industry = (req.body.industry || '').trim();
 
   if (!name) {
-    flash(req, 'err', 'Şablon adı zorunlu.');
+    flash(req, 'err', 'Åablon adÄ± zorunlu.');
     return res.redirect('/app/templates/new');
   }
 
@@ -2348,7 +2348,7 @@ app.post('/app/templates', requireAuth, requireOwner, verifyCsrf, (req, res) => 
   }
 
   if (docs.length === 0) {
-    flash(req, 'err', 'En az 1 belge ekleyin veya bir şablon seçin.');
+    flash(req, 'err', 'En az 1 belge ekleyin veya bir ÅŸablon seÃ§in.');
     return res.redirect('/app/templates/new');
   }
 
@@ -2375,7 +2375,7 @@ app.post('/app/templates', requireAuth, requireOwner, verifyCsrf, (req, res) => 
     });
   });
 
-  flash(req, 'ok', 'Şablon oluşturuldu.');
+  flash(req, 'ok', 'Åablon oluÅŸturuldu.');
   res.redirect(`/app/templates/${templateId}/edit`);
 });
 
@@ -2392,12 +2392,12 @@ app.get('/app/templates/:id/edit', requireAuth, requireOwner, noStore, (req, res
 
   const t = (db.templates || []).find(x => x.id === req.params.id && x.tenantId === req.tenant.id);
   if (!t) {
-    flash(req, 'err', 'Şablon bulunamadı.');
+    flash(req, 'err', 'Åablon bulunamadÄ±.');
     return res.redirect('/app/templates');
   }
 
   res.render('layout', {
-    title: 'Şablon Düzenle',
+    title: 'Åablon DÃ¼zenle',
     appName: APP_NAME,
     supportEmail: SUPPORT_EMAIL,
     user: req.user,
@@ -2417,8 +2417,8 @@ app.get('/app/templates/:id/edit', requireAuth, requireOwner, noStore, (req, res
 });
 
 app.post('/app/templates/:id', requireAuth, requireOwner, verifyCsrf, (req, res, next) => {
-  // /app/templates/default ve /app/templates/copy gibi statik route’lar
-  // generic :id route’u tarafından yutulmasın
+  // /app/templates/default ve /app/templates/copy gibi statik routeâ€™lar
+  // generic :id routeâ€™u tarafÄ±ndan yutulmasÄ±n
   if (req.params.id === 'default' || req.params.id === 'copy') return next('route');
 
   const docs = [];
@@ -2436,7 +2436,7 @@ app.post('/app/templates/:id', requireAuth, requireOwner, verifyCsrf, (req, res,
   }
 
   if (docs.length === 0) {
-    flash(req, 'err', 'En az 1 belge ekleyin veya bir şablon seçin.');
+    flash(req, 'err', 'En az 1 belge ekleyin veya bir ÅŸablon seÃ§in.');
     return res.redirect(`/app/templates/${req.params.id}/edit`);
   }
 
@@ -2478,7 +2478,7 @@ app.post('/app/templates/:id/delete', requireAuth, requireOwner, verifyCsrf, (re
       at: nowISO(),
     });
   });
-  flash(req, 'ok', 'Şablon silindi.');
+  flash(req, 'ok', 'Åablon silindi.');
   res.redirect('/app/templates');
 });
 
@@ -2488,8 +2488,8 @@ app.post('/app/templates/default', requireAuth, requireOwner, verifyCsrf, (req, 
   const t = findTemplateById(db, req.tenant.id, templateId);
   if (!t) {
     const wantsJson = String(req.headers.accept || '').includes('application/json');
-    if (wantsJson) return res.status(404).json({ ok: false, error: 'Şablon bulunamadı.' });
-    flash(req, 'err', 'Şablon bulunamadı.');
+    if (wantsJson) return res.status(404).json({ ok: false, error: 'Åablon bulunamadÄ±.' });
+    flash(req, 'err', 'Åablon bulunamadÄ±.');
     return res.redirect('/app/templates');
   }
 
@@ -2510,7 +2510,7 @@ app.post('/app/templates/default', requireAuth, requireOwner, verifyCsrf, (req, 
   const wantsJson = String(req.headers.accept || '').includes('application/json');
   if (wantsJson) return res.json({ ok: true, defaultTemplateId: templateId });
 
-  flash(req, 'ok', 'Varsayılan şablon ayarlandı.');
+  flash(req, 'ok', 'VarsayÄ±lan ÅŸablon ayarlandÄ±.');
   res.redirect('/app/templates');
 });
 
@@ -2522,7 +2522,7 @@ app.post('/app/templates/copy', requireAuth, requireOwner, verifyCsrf, (req, res
   const builtin = builtinTemplates().find(t => t.id === from) || null;
   const tpl = builtin || findTemplateById(db, req.tenant.id, from);
   if (!tpl) {
-    const msg = 'Kopyalanacak şablon bulunamadı.';
+    const msg = 'Kopyalanacak ÅŸablon bulunamadÄ±.';
     if (wants) return res.status(404).json({ ok: false, error: msg });
     flash(req, 'err', msg);
     return res.redirect('/app/templates');
@@ -2533,7 +2533,7 @@ app.post('/app/templates/copy', requireAuth, requireOwner, verifyCsrf, (req, res
     ? (db.templates || []).find(t => t.tenantId === req.tenant.id && t.sourceBuiltinId === builtin.id)
     : null;
   if (existing) {
-    const msg = 'Bu hazır şablon zaten şirket şablonlarına kopyalandı.';
+    const msg = 'Bu hazÄ±r ÅŸablon zaten ÅŸirket ÅŸablonlarÄ±na kopyalandÄ±.';
     if (wants) return res.json({ ok: true, id: existing.id, existing: true, redirect: '/app/templates' });
     flash(req, 'ok', msg);
     return res.redirect('/app/templates');
@@ -2545,7 +2545,7 @@ app.post('/app/templates/copy', requireAuth, requireOwner, verifyCsrf, (req, res
     db2.templates.push({
       id,
       tenantId: req.tenant.id,
-      name: `${tpl.name} (Özel)`,
+      name: `${tpl.name} (Ã–zel)`,
       industry: tpl.industry || '',
       sourceBuiltinId: builtin ? builtin.id : (tpl.sourceBuiltinId || ''),
       docs: (tpl.docs || []).map(d => ({ ...d })),
@@ -2564,7 +2564,7 @@ app.post('/app/templates/copy', requireAuth, requireOwner, verifyCsrf, (req, res
   });
 
   if (wants) return res.json({ ok: true, id, redirect: '/app/templates' });
-  flash(req, 'ok', 'Şablon kopyalandı. Şirket şablonlarında hazır.');
+  flash(req, 'ok', 'Åablon kopyalandÄ±. Åirket ÅŸablonlarÄ±nda hazÄ±r.');
   res.redirect('/app/templates');
 });
 
@@ -2574,7 +2574,7 @@ app.post('/app/templates/builtin/edit', requireAuth, requireOwner, verifyCsrf, (
   const db = readDB();
   const tpl = findTemplateById(db, req.tenant.id, from);
   if (!tpl || tpl.builtin !== true) {
-    flash(req, 'err', 'Düzenlenecek hazır şablon bulunamadı.');
+    flash(req, 'err', 'DÃ¼zenlenecek hazÄ±r ÅŸablon bulunamadÄ±.');
     return res.redirect('/app/templates');
   }
 
@@ -2591,7 +2591,7 @@ app.post('/app/templates/builtin/edit', requireAuth, requireOwner, verifyCsrf, (
       id,
       tenantId: req.tenant.id,
       sourceBuiltinId: from,
-      name: `${tpl.name} (Özel)`,
+      name: `${tpl.name} (Ã–zel)`,
       industry: tpl.industry || '',
       docs: (tpl.docs || []).map(d => ({ ...d })),
       createdAt: nowISO(),
@@ -2613,7 +2613,7 @@ app.post('/app/templates/builtin/edit', requireAuth, requireOwner, verifyCsrf, (
     });
   });
 
-  flash(req, 'ok', 'Hazır şablon özelleştirme modunda açıldı.');
+  flash(req, 'ok', 'HazÄ±r ÅŸablon Ã¶zelleÅŸtirme modunda aÃ§Ä±ldÄ±.');
   res.redirect(`/app/templates/${id}/edit`);
 });
 
@@ -2657,7 +2657,7 @@ app.get('/app/team/invite', requireAuth, requireOwner, noStore, (req, res) => {
   delete req.session.inviteLink;
 
   res.render('layout', {
-    title: 'Kullanıcı Davet',
+    title: 'KullanÄ±cÄ± Davet',
     appName: APP_NAME,
     supportEmail: SUPPORT_EMAIL,
     user: req.user,
@@ -2674,11 +2674,11 @@ app.post('/app/team/invite', requireAuth, requireOwner, verifyCsrf, async (req, 
   const email = (req.body.email || '').trim().toLowerCase();
   const role = (req.body.role || 'member').trim();
   if (!email || !email.includes('@')) {
-    flash(req, 'err', 'E-posta geçersiz.');
+    flash(req, 'err', 'E-posta geÃ§ersiz.');
     return res.redirect('/app/team/invite');
   }
   if (!['member','admin'].includes(role)) {
-    flash(req, 'err', 'Rol geçersiz.');
+    flash(req, 'err', 'Rol geÃ§ersiz.');
     return res.redirect('/app/team/invite');
   }
 
@@ -2686,15 +2686,15 @@ app.post('/app/team/invite', requireAuth, requireOwner, verifyCsrf, async (req, 
   const plan = getPlanForTenant(db, req.tenant.id);
   const usersCount = (db.users || []).filter(u => u.tenantId === req.tenant.id).length;
   if (usersCount >= plan.maxUsers) {
-    flash(req, 'err', `Plan kullanıcı limiti dolu (${plan.maxUsers}). Plan yükseltin.`);
+    flash(req, 'err', `Plan kullanÄ±cÄ± limiti dolu (${plan.maxUsers}). Plan yÃ¼kseltin.`);
     return res.redirect('/app/billing');
   }
   if ((db.users || []).some(u => u.email === email)) {
-    flash(req, 'err', 'Bu e-posta zaten kayıtlı.');
+    flash(req, 'err', 'Bu e-posta zaten kayÄ±tlÄ±.');
     return res.redirect('/app/team/invite');
   }
   if ((db.invites || []).some(i => i.tenantId === req.tenant.id && i.email === email && isInviteValid(i))) {
-    flash(req, 'err', 'Bu e-posta için zaten bekleyen bir davet var.');
+    flash(req, 'err', 'Bu e-posta iÃ§in zaten bekleyen bir davet var.');
     return res.redirect('/app/team');
   }
 
@@ -2733,10 +2733,10 @@ app.post('/app/team/invite', requireAuth, requireOwner, verifyCsrf, async (req, 
       await mailer.sendMail({
         from: process.env.SMTP_FROM || `${APP_NAME} <noreply@example.com>`,
         to: email,
-        subject: `Davet — ${req.tenant.name}`,
-        text: `Merhaba,\n\n${req.tenant.name} şirketi sizi ${APP_NAME} uygulamasına davet etti.\n\nDavet linki:\n${link}\n\nBu link 14 gün geçerlidir.\n`,
+        subject: `Davet â€” ${req.tenant.name}`,
+        text: `Merhaba,\n\n${req.tenant.name} ÅŸirketi sizi ${APP_NAME} uygulamasÄ±na davet etti.\n\nDavet linki:\n${link}\n\nBu link 14 gÃ¼n geÃ§erlidir.\n`,
       });
-      flash(req, 'ok', 'Davet e-postası gönderildi.');
+      flash(req, 'ok', 'Davet e-postasÄ± gÃ¶nderildi.');
       return res.redirect('/app/team');
     } catch (e) {
       console.warn('team invite mail failed', e.message);
@@ -2745,7 +2745,7 @@ app.post('/app/team/invite', requireAuth, requireOwner, verifyCsrf, async (req, 
   }
 
   req.session.inviteLink = link;
-  flash(req, 'ok', 'Davet oluşturuldu. SMTP yoksa linki kopyalayın.');
+  flash(req, 'ok', 'Davet oluÅŸturuldu. SMTP yoksa linki kopyalayÄ±n.');
   return res.redirect('/app/team/invite');
 });
 
@@ -2792,7 +2792,7 @@ app.post('/app/team/remove/:userId', requireAuth, requireOwner, verifyCsrf, (req
       at: nowISO(),
     });
   });
-  flash(req, 'ok', 'Kullanıcı kaldırıldı.');
+  flash(req, 'ok', 'KullanÄ±cÄ± kaldÄ±rÄ±ldÄ±.');
   res.redirect('/app/team');
 });
 
@@ -2830,7 +2830,7 @@ app.get('/app/requests', requireAuth, noStore, (req, res) => {
 });
 
 const DEFAULT_DOCS = [];
-// Yeni talep ekranı varsayılan olarak BOS başlar. (Şablon seçilirse şablondan dolar)
+// Yeni talep ekranÄ± varsayÄ±lan olarak BOS baÅŸlar. (Åablon seÃ§ilirse ÅŸablondan dolar)
 
 
 app.get('/app/requests/new', requireAuth, noStore, (req, res) => {
@@ -2850,7 +2850,7 @@ app.get('/app/requests/new', requireAuth, noStore, (req, res) => {
   } else if (tplOverride) {
     initialTemplateId = tplOverride;
   } else {
-    initialTemplateId = ''; // Public launch: yeni talep BOS başlar; default şablon otomatik uygulanmaz
+    initialTemplateId = ''; // Public launch: yeni talep BOS baÅŸlar; default ÅŸablon otomatik uygulanmaz
   }
 
   const initialTemplate = initialTemplateId ? findTemplateById(db, req.tenant.id, initialTemplateId) : null;
@@ -2887,7 +2887,7 @@ app.post('/app/requests', requireAuth, verifyCsrf, (req, res) => {
   const vendorMessage = (req.body.vendorMessage || '').trim();
 
   if (!vendorName) {
-    flash(req, 'err', 'Tedarikçi adı zorunlu.');
+    flash(req, 'err', 'TedarikÃ§i adÄ± zorunlu.');
     return res.redirect('/app/requests/new');
   }
 
@@ -2915,20 +2915,20 @@ app.post('/app/requests', requireAuth, verifyCsrf, (req, res) => {
   }
 
   if (docs.length === 0) {
-    flash(req, 'err', 'En az 1 belge ekleyin veya bir şablon seçin.');
+    flash(req, 'err', 'En az 1 belge ekleyin veya bir ÅŸablon seÃ§in.');
     return res.redirect('/app/requests/new');
   }
 
   const db = readDB();
   const plan = getPlanForTenant(db, req.tenant.id);
   if (docs.length > plan.maxDocsPerRequest) {
-    flash(req, 'err', `Plan limit: Talep başına en fazla ${plan.maxDocsPerRequest} belge.`);
+    flash(req, 'err', `Plan limit: Talep baÅŸÄ±na en fazla ${plan.maxDocsPerRequest} belge.`);
     return res.redirect('/app/requests/new');
   }
 
   const activeCount = db.requests.filter(r => r.tenantId === req.tenant.id && r.status !== 'archived').length;
   if (activeCount >= plan.maxActiveRequests) {
-    flash(req, 'err', `Plan limit: Aktif talep limiti (${plan.maxActiveRequests}). Lütfen plan yükseltin.`);
+    flash(req, 'err', `Plan limit: Aktif talep limiti (${plan.maxActiveRequests}). LÃ¼tfen plan yÃ¼kseltin.`);
     return res.redirect('/app/billing');
   }
 
@@ -2981,7 +2981,7 @@ app.post('/app/requests', requireAuth, verifyCsrf, (req, res) => {
     });
   });
 
-  // Notifications (webhook/slack/teams) — fire-and-forget
+  // Notifications (webhook/slack/teams) â€” fire-and-forget
   try {
     const baseUrl = getBaseUrl(req);
     const tenantNow = readDB().tenants.find(t => t.id === req.tenant.id);
@@ -2997,7 +2997,7 @@ app.post('/app/requests', requireAuth, verifyCsrf, (req, res) => {
     }).catch(e => console.warn('notify request.created failed', e.message));
   } catch (e) {}
 
-  flash(req, 'ok', 'Talep oluşturuldu.');
+  flash(req, 'ok', 'Talep oluÅŸturuldu.');
   // Use human-friendly Talep No in the URL for a cleaner address bar.
   res.redirect(`/app/requests/${encodeURIComponent(publicId || requestId)}`);
 });
@@ -3006,7 +3006,7 @@ function maskId(s) {
   const str = String(s || '');
   if (!str) return '';
   if (str.length <= 10) return str;
-  return `${str.slice(0, 4)}…${str.slice(-4)}`;
+  return `${str.slice(0, 4)}â€¦${str.slice(-4)}`;
 }
 
 function redactDetailValue(key, value) {
@@ -3046,27 +3046,27 @@ function formatAuditDetail(a) {
 
   if (action === 'created') {
     const docs = (d && typeof d.docs !== 'undefined') ? d.docs : undefined;
-    return docs != null ? `Talep oluşturuldu (belge: ${docs})` : 'Talep oluşturuldu';
+    return docs != null ? `Talep oluÅŸturuldu (belge: ${docs})` : 'Talep oluÅŸturuldu';
   }
 
   if (action === 'status_changed') {
     const from = d && d.from ? d.from : '?';
     const to = d && d.to ? d.to : '?';
-    return `Durum: ${from} → ${to}`;
+    return `Durum: ${from} â†’ ${to}`;
   }
 
   if (action === 'participant_added') {
     const role = d && d.role ? d.role : '?';
     const email = d && d.email ? d.email : '';
     const pid = d && d.pid ? maskId(d.pid) : '';
-    return `Katılımcı eklendi: ${role}${email ? ` · ${email}` : ''}${pid ? ` · ${pid}` : ''}`;
+    return `KatÄ±lÄ±mcÄ± eklendi: ${role}${email ? ` Â· ${email}` : ''}${pid ? ` Â· ${pid}` : ''}`;
   }
 
   if (action === 'participant_removed') {
     const role = d && d.role ? d.role : '?';
     const email = d && d.email ? d.email : '';
     const pid = d && d.pid ? maskId(d.pid) : '';
-    return `Katılımcı kaldırıldı: ${role}${email ? ` · ${email}` : ''}${pid ? ` · ${pid}` : ''}`;
+    return `KatÄ±lÄ±mcÄ± kaldÄ±rÄ±ldÄ±: ${role}${email ? ` Â· ${email}` : ''}${pid ? ` Â· ${pid}` : ''}`;
   }
 
   if (action === 'upload') {
@@ -3078,27 +3078,27 @@ function formatAuditDetail(a) {
     if (size) parts.push(size);
     if (mime) parts.push(mime);
     if (provider) parts.push(provider);
-    return `Yüklendi: ${label}${parts.length ? ` (${parts.join(', ')})` : ''}`;
+    return `YÃ¼klendi: ${label}${parts.length ? ` (${parts.join(', ')})` : ''}`;
   }
 
   if (action === 'download') {
     const label = d && d.docLabel ? d.docLabel : (d && d.docId ? maskId(d.docId) : 'Belge');
-    return `İndirildi: ${label}`;
+    return `Ä°ndirildi: ${label}`;
   }
 
   if (action === 'link_created') {
-    const role = d && d.role ? d.role : 'tedarikçi';
-    const sent = d && d.sent ? ' (e-posta gönderildi)' : '';
-    return `Link oluşturuldu: ${role}${sent}`;
+    const role = d && d.role ? d.role : 'tedarikÃ§i';
+    const sent = d && d.sent ? ' (e-posta gÃ¶nderildi)' : '';
+    return `Link oluÅŸturuldu: ${role}${sent}`;
   }
 
   // Fallback: show redacted JSON (single line)
   const redacted = redactDetailObject(d || {});
   try {
     const s = JSON.stringify(redacted);
-    return s === '{}' ? '—' : s;
+    return s === '{}' ? 'â€”' : s;
   } catch (_) {
-    return '—';
+    return 'â€”';
   }
 }
 
@@ -3176,7 +3176,7 @@ function buildVendorInviteEmailText(tenant, reqItem, vendorLink) {
   const lines = [];
   lines.push(`Merhaba ${reqItem.vendor.name || ''},`);
   lines.push('');
-  lines.push(`${tenant.name} adına sizden aşağıdaki belgeleri yüklemenizi rica ediyoruz.`);
+  lines.push(`${tenant.name} adÄ±na sizden aÅŸaÄŸÄ±daki belgeleri yÃ¼klemenizi rica ediyoruz.`);
   if (reqItem.dueDate) lines.push(`Son tarih: ${reqItem.dueDate}`);
   lines.push('');
   lines.push('Belge listesi:');
@@ -3189,10 +3189,10 @@ function buildVendorInviteEmailText(tenant, reqItem, vendorLink) {
     lines.push(reqItem.vendorMessage);
   }
   lines.push('');
-  lines.push('Yükleme linki:');
+  lines.push('YÃ¼kleme linki:');
   lines.push(vendorLink);
   lines.push('');
-  lines.push('Teşekkürler.');
+  lines.push('TeÅŸekkÃ¼rler.');
   return lines.join('\n');
 }
 
@@ -3202,20 +3202,20 @@ function buildVendorReminderEmailText(tenant, reqItem, vendorLink) {
   const lines = [];
   lines.push(`Merhaba ${reqItem.vendor.name || ''},`);
   lines.push('');
-  lines.push(`${tenant.name} belge talebiniz için hatırlatma.`);
+  lines.push(`${tenant.name} belge talebiniz iÃ§in hatÄ±rlatma.`);
   if (reqItem.dueDate) lines.push(`Son tarih: ${reqItem.dueDate}`);
   lines.push('');
   if (missingRequired.length) {
     lines.push('Eksik zorunlu belgeler:');
     for (const d of missingRequired) lines.push(`- ${d.label}`);
   } else {
-    lines.push('Zorunlu belgeler tamam görünüyor.');
+    lines.push('Zorunlu belgeler tamam gÃ¶rÃ¼nÃ¼yor.');
   }
   lines.push('');
-  lines.push('Yükleme linki:');
+  lines.push('YÃ¼kleme linki:');
   lines.push(vendorLink);
   lines.push('');
-  lines.push('Teşekkürler.');
+  lines.push('TeÅŸekkÃ¼rler.');
   return lines.join('\n');
 }
 
@@ -3227,18 +3227,18 @@ app.post('/app/requests/:id/email/invite', requireAuth, verifyCsrf, async (req, 
 
   const plan = getPlanForTenant(db, req.tenant.id);
   if (plan.code === 'free') {
-    flash(req, 'err', 'Bu özellik ücretli planlarda aktif (Başlangıç ve üzeri).');
+    flash(req, 'err', 'Bu Ã¶zellik Ã¼cretli planlarda aktif (BaÅŸlangÄ±Ã§ ve Ã¼zeri).');
     return res.redirect('/app/billing');
   }
 
   const mailer = getMailer();
   if (!mailer) {
-    flash(req, 'err', 'SMTP ayarlı değil. E-posta özellikleri kapalı.');
+    flash(req, 'err', 'SMTP ayarlÄ± deÄŸil. E-posta Ã¶zellikleri kapalÄ±.');
     return res.redirect(`/app/requests/${r.id}`);
   }
   const to = (r.vendor?.email || '').trim();
   if (!to) {
-    flash(req, 'err', 'Tedarikçi e-postası boş.');
+    flash(req, 'err', 'TedarikÃ§i e-postasÄ± boÅŸ.');
     return res.redirect(`/app/requests/${r.id}`);
   }
 
@@ -3250,7 +3250,7 @@ app.post('/app/requests/:id/email/invite', requireAuth, verifyCsrf, async (req, 
     await mailer.sendMail({
       from: process.env.SMTP_FROM || `${APP_NAME} <noreply@example.com>`,
       to,
-      subject: `Belge Talebi — ${tenant.name}`,
+      subject: `Belge Talebi â€” ${tenant.name}`,
       text: buildVendorInviteEmailText(tenant, r, vendorLink),
     });
 
@@ -3271,11 +3271,11 @@ app.post('/app/requests/:id/email/invite', requireAuth, verifyCsrf, async (req, 
       });
     });
 
-    flash(req, 'ok', 'Davet e-postası gönderildi.');
+    flash(req, 'ok', 'Davet e-postasÄ± gÃ¶nderildi.');
     return res.redirect(`/app/requests/${r.id}`);
   } catch (e) {
     console.warn('invite email failed', e.message);
-    flash(req, 'err', 'E-posta gönderilemedi. SMTP ayarlarını kontrol edin.');
+    flash(req, 'err', 'E-posta gÃ¶nderilemedi. SMTP ayarlarÄ±nÄ± kontrol edin.');
     return res.redirect(`/app/requests/${r.id}`);
   }
 });
@@ -3287,18 +3287,18 @@ app.post('/app/requests/:id/email/remind', requireAuth, verifyCsrf, async (req, 
 
   const plan = getPlanForTenant(db, req.tenant.id);
   if (plan.code === 'free') {
-    flash(req, 'err', 'Bu özellik ücretli planlarda aktif (Başlangıç ve üzeri).');
+    flash(req, 'err', 'Bu Ã¶zellik Ã¼cretli planlarda aktif (BaÅŸlangÄ±Ã§ ve Ã¼zeri).');
     return res.redirect('/app/billing');
   }
 
   const mailer = getMailer();
   if (!mailer) {
-    flash(req, 'err', 'SMTP ayarlı değil. E-posta özellikleri kapalı.');
+    flash(req, 'err', 'SMTP ayarlÄ± deÄŸil. E-posta Ã¶zellikleri kapalÄ±.');
     return res.redirect(`/app/requests/${r.id}`);
   }
   const to = (r.vendor?.email || '').trim();
   if (!to) {
-    flash(req, 'err', 'Tedarikçi e-postası boş.');
+    flash(req, 'err', 'TedarikÃ§i e-postasÄ± boÅŸ.');
     return res.redirect(`/app/requests/${r.id}`);
   }
 
@@ -3310,7 +3310,7 @@ app.post('/app/requests/:id/email/remind', requireAuth, verifyCsrf, async (req, 
     await mailer.sendMail({
       from: process.env.SMTP_FROM || `${APP_NAME} <noreply@example.com>`,
       to,
-      subject: `Hatırlatma — ${tenant.name}`,
+      subject: `HatÄ±rlatma â€” ${tenant.name}`,
       text: buildVendorReminderEmailText(tenant, r, vendorLink),
     });
 
@@ -3333,17 +3333,17 @@ app.post('/app/requests/:id/email/remind', requireAuth, verifyCsrf, async (req, 
       });
     });
 
-    flash(req, 'ok', 'Hatırlatma gönderildi.');
+    flash(req, 'ok', 'HatÄ±rlatma gÃ¶nderildi.');
     return res.redirect(`/app/requests/${r.id}`);
   } catch (e) {
     console.warn('reminder email failed', e.message);
-    flash(req, 'err', 'E-posta gönderilemedi. SMTP ayarlarını kontrol edin.');
+    flash(req, 'err', 'E-posta gÃ¶nderilemedi. SMTP ayarlarÄ±nÄ± kontrol edin.');
     return res.redirect(`/app/requests/${r.id}`);
   }
 });
 
 
-// Vendor participants (çoklu kişi)
+// Vendor participants (Ã§oklu kiÅŸi)
 app.post('/app/requests/:id/participants', requireAuth, verifyCsrf, async (req, res) => {
   const roleRaw = (req.body.role || '').trim();
   const role = ['mali_musavir', 'yetkili', 'diger'].includes(roleRaw) ? roleRaw : 'diger';
@@ -3405,13 +3405,13 @@ app.post('/app/requests/:id/participants', requireAuth, verifyCsrf, async (req, 
       await mailer.sendMail({
         from: process.env.SMTP_FROM || `${APP_NAME} <noreply@example.com>`,
         to: email,
-        subject: `Belge yükleme linki (${role.replace('_',' ')}) — ${r.vendor.name}`,
+        subject: `Belge yÃ¼kleme linki (${role.replace('_',' ')}) â€” ${r.vendor.name}`,
         text: `Merhaba${name ? ' ' + name : ''},
 
-Bu link ile belge yükleyebilirsiniz:
+Bu link ile belge yÃ¼kleyebilirsiniz:
 ${link}
 
-Not: ${canSubmit ? 'Bu link ile belgeleri gönderebilirsiniz (Yetkili).' : 'Bu link ile sadece belge yükleyebilirsiniz. “Gönder” için yetkili linki gerekir.'}
+Not: ${canSubmit ? 'Bu link ile belgeleri gÃ¶nderebilirsiniz (Yetkili).' : 'Bu link ile sadece belge yÃ¼kleyebilirsiniz. â€œGÃ¶nderâ€ iÃ§in yetkili linki gerekir.'}
 
 `,
       });
@@ -3420,7 +3420,7 @@ Not: ${canSubmit ? 'Bu link ile belgeleri gönderebilirsiniz (Yetkili).' : 'Bu l
     }
   }
 
-  flash(req, 'ok', `Kişi eklendi. Link: ${link}`);
+  flash(req, 'ok', `KiÅŸi eklendi. Link: ${link}`);
   res.redirect(`/app/requests/${req.params.id}`);
 });
 
@@ -3431,13 +3431,13 @@ app.post('/app/requests/:id/participants/:pid/email', requireAuth, verifyCsrf, a
 
   const p = (r.participants || []).find(x => x.id === req.params.pid);
   if (!p || !p.email) {
-    flash(req, 'err', 'E-posta bulunamadı.');
+    flash(req, 'err', 'E-posta bulunamadÄ±.');
     return res.redirect(`/app/requests/${r.id}`);
   }
 
   const mailer = getMailer();
   if (!mailer) {
-    flash(req, 'err', 'SMTP ayarlı değil.');
+    flash(req, 'err', 'SMTP ayarlÄ± deÄŸil.');
     return res.redirect(`/app/requests/${r.id}`);
   }
 
@@ -3447,13 +3447,13 @@ app.post('/app/requests/:id/participants/:pid/email', requireAuth, verifyCsrf, a
     await mailer.sendMail({
       from: process.env.SMTP_FROM || `${APP_NAME} <noreply@example.com>`,
       to: p.email,
-      subject: `Belge yükleme linki (${(p.role || '').replace('_',' ')}) — ${r.vendor.name}`,
+      subject: `Belge yÃ¼kleme linki (${(p.role || '').replace('_',' ')}) â€” ${r.vendor.name}`,
       text: `Merhaba${p.name ? ' ' + p.name : ''},
 
-Bu link ile belge yükleyebilirsiniz:
+Bu link ile belge yÃ¼kleyebilirsiniz:
 ${link}
 
-Not: ${p.canSubmit ? 'Bu link ile belgeleri gönderebilirsiniz (Yetkili).' : 'Bu link ile sadece belge yükleyebilirsiniz. “Gönder” için yetkili linki gerekir.'}
+Not: ${p.canSubmit ? 'Bu link ile belgeleri gÃ¶nderebilirsiniz (Yetkili).' : 'Bu link ile sadece belge yÃ¼kleyebilirsiniz. â€œGÃ¶nderâ€ iÃ§in yetkili linki gerekir.'}
 
 `,
     });
@@ -3473,11 +3473,11 @@ Not: ${p.canSubmit ? 'Bu link ile belgeleri gönderebilirsiniz (Yetkili).' : 'Bu
       });
     });
 
-    flash(req, 'ok', 'E-posta gönderildi.');
+    flash(req, 'ok', 'E-posta gÃ¶nderildi.');
     return res.redirect(`/app/requests/${r.id}`);
   } catch (e) {
     console.warn('participant email failed', e.message);
-    flash(req, 'err', 'E-posta gönderilemedi.');
+    flash(req, 'err', 'E-posta gÃ¶nderilemedi.');
     return res.redirect(`/app/requests/${r.id}`);
   }
 });
@@ -3507,14 +3507,14 @@ app.post('/app/requests/:id/participants/:pid/delete', requireAuth, verifyCsrf, 
     });
   });
 
-  flash(req, 'ok', 'Kişi kaldırıldı.');
+  flash(req, 'ok', 'KiÅŸi kaldÄ±rÄ±ldÄ±.');
   res.redirect(`/app/requests/${req.params.id}`);
 });
 
 app.post('/app/requests/:id/status', requireAuth, verifyCsrf, (req, res) => {
   const status = (req.body.status || '').trim();
   if (!STATUS.includes(status)) {
-    flash(req, 'err', 'Durum geçersiz.');
+    flash(req, 'err', 'Durum geÃ§ersiz.');
     return res.redirect(`/app/requests/${req.params.id}`);
   }
 
@@ -3632,11 +3632,11 @@ app.post('/app/requests/:id/docs/:docId/dates', requireAuth, verifyCsrf, (req, r
   });
 
   if (!result) {
-    flash(req, 'err', 'Belge bulunamadı.');
+    flash(req, 'err', 'Belge bulunamadÄ±.');
     return res.redirect(`/app/requests/${req.params.id}`);
   }
 
-  flash(req, 'ok', 'Tarih doğrulama güncellendi.');
+  flash(req, 'ok', 'Tarih doÄŸrulama gÃ¼ncellendi.');
   res.redirect(`/app/requests/${req.params.id}`);
 });
 
@@ -3645,11 +3645,11 @@ app.post('/app/requests/:id/docs/:docId/dates', requireAuth, verifyCsrf, (req, r
   });
 
   if (!result) {
-    flash(req, 'err', 'Belge bulunamadı.');
+    flash(req, 'err', 'Belge bulunamadÄ±.');
     return res.redirect(`/app/requests/${req.params.id}`);
   }
 
-  flash(req, 'ok', 'İmza doğrulama güncellendi.');
+  flash(req, 'ok', 'Ä°mza doÄŸrulama gÃ¼ncellendi.');
   res.redirect(`/app/requests/${req.params.id}`);
 });
 
@@ -3790,7 +3790,7 @@ app.post('/app/requests/:id/delete', requireAuth, verifyCsrf, async (req, res) =
 
 // CSV export for a single request
 app.get('/app/requests/:id/export.csv', requireAuth, (req, res) => {
-  flash(req, 'err', 'CSV dışa aktarma kaldırıldı.');
+  flash(req, 'err', 'CSV dÄ±ÅŸa aktarma kaldÄ±rÄ±ldÄ±.');
   return res.redirect(`/app/requests/${req.params.id}`);
 });
 
@@ -3814,7 +3814,7 @@ app.get('/app/billing', requireAuth, requireOwner, noStore, (req, res) => {
     .sort((a,b) => (b.updatedAt||'').localeCompare(a.updatedAt||''));
 
   res.render('layout', {
-    title: 'Plan/Ödeme',
+    title: 'Plan/Ã–deme',
     appName: APP_NAME,
     supportEmail: SUPPORT_EMAIL,
     user: req.user,
@@ -3841,11 +3841,11 @@ app.post('/app/billing/manual', requireAuth, requireOwner, verifyCsrf, (req, res
   const plan = (req.body.plan || '').trim();
   const expected = (process.env.BILLING_ADMIN_SECRET || '').trim();
   if (!expected || secret !== expected) {
-    flash(req, 'err', 'Secret hatalı.');
+    flash(req, 'err', 'Secret hatalÄ±.');
     return res.redirect('/app/billing');
   }
   if (!PLANS[plan]) {
-    flash(req, 'err', 'Plan geçersiz.');
+    flash(req, 'err', 'Plan geÃ§ersiz.');
     return res.redirect('/app/billing');
   }
   withDB(db => {
@@ -3858,18 +3858,18 @@ app.post('/app/billing/manual', requireAuth, requireOwner, verifyCsrf, (req, res
       updatedAt: nowISO(),
     });
   });
-  flash(req, 'ok', 'Plan güncellendi.');
+  flash(req, 'ok', 'Plan gÃ¼ncellendi.');
   res.redirect('/app/billing');
 });
 
 app.post('/app/billing/start', requireAuth, requireOwner, verifyCsrf, async (req, res) => {
   if (!iyzicoEnabled()) {
-    flash(req, 'err', 'Ödeme kapalı veya iyzico ayarları eksik.');
+    flash(req, 'err', 'Ã–deme kapalÄ± veya iyzico ayarlarÄ± eksik.');
     return res.redirect('/app/billing');
   }
   const planCode = (req.body.plan || '').trim();
   if (!['starter','team','pro'].includes(planCode)) {
-    flash(req, 'err', 'Plan seçimi geçersiz.');
+    flash(req, 'err', 'Plan seÃ§imi geÃ§ersiz.');
     return res.redirect('/app/billing');
   }
   const planRef = {
@@ -3878,7 +3878,7 @@ app.post('/app/billing/start', requireAuth, requireOwner, verifyCsrf, async (req
     pro: (process.env.IYZICO_PLAN_PRO_REF || '').trim(),
   }[planCode];
   if (!planRef) {
-    flash(req, 'err', 'iyzico plan referansı eksik (.env).');
+    flash(req, 'err', 'iyzico plan referansÄ± eksik (.env).');
     return res.redirect('/app/billing');
   }
 
@@ -3904,8 +3904,8 @@ app.post('/app/billing/start', requireAuth, requireOwner, verifyCsrf, async (req
       gsmNumber: gsmNumber || undefined,
       billingAddress: address ? {
         contactName: `${firstName} ${lastName}`.trim(),
-        city: '—',
-        country: 'Türkiye',
+        city: 'â€”',
+        country: 'TÃ¼rkiye',
         address,
         zipCode: '00000',
       } : undefined,
@@ -3919,7 +3919,7 @@ app.post('/app/billing/start', requireAuth, requireOwner, verifyCsrf, async (req
 
     if (!token || !html) {
       console.warn('iyzico init response', init);
-      flash(req, 'err', 'iyzico yanıtı beklenenden farklı. Loglara bakın.');
+      flash(req, 'err', 'iyzico yanÄ±tÄ± beklenenden farklÄ±. Loglara bakÄ±n.');
       return res.redirect('/app/billing');
     }
 
@@ -3937,7 +3937,7 @@ app.post('/app/billing/start', requireAuth, requireOwner, verifyCsrf, async (req
     });
 
     res.render('layout', {
-      title: 'Ödeme',
+      title: 'Ã–deme',
       appName: APP_NAME,
       supportEmail: SUPPORT_EMAIL,
       user: req.user,
@@ -3950,7 +3950,7 @@ app.post('/app/billing/start', requireAuth, requireOwner, verifyCsrf, async (req
     });
   } catch (e) {
     console.error('iyzico init error', e.status, e.payload || e.message);
-    flash(req, 'err', 'iyzico başlatılamadı. Anahtar/plan/callback ayarlarını kontrol edin.');
+    flash(req, 'err', 'iyzico baÅŸlatÄ±lamadÄ±. Anahtar/plan/callback ayarlarÄ±nÄ± kontrol edin.');
     return res.redirect('/app/billing');
   }
 });
@@ -3989,8 +3989,8 @@ app.get('/billing/iyzico/callback', noStore, async (req, res) => {
     return res.send(`
       <html><head><meta charset="utf-8"><meta http-equiv="refresh" content="2;url=/app/billing"/></head>
       <body style="font-family:system-ui;padding:24px">
-        <h2>${success ? 'Ödeme başarılı' : 'Ödeme tamamlanamadı'}</h2>
-        <p>2 saniye içinde portala yönlendirileceksiniz.</p>
+        <h2>${success ? 'Ã–deme baÅŸarÄ±lÄ±' : 'Ã–deme tamamlanamadÄ±'}</h2>
+        <p>2 saniye iÃ§inde portala yÃ¶nlendirileceksiniz.</p>
         <p><a href="/app/billing">Devam</a></p>
       </body></html>
     `);
@@ -4029,7 +4029,7 @@ app.get('/app/security', requireAuth, noStore, (req, res) => {
   const tenant = db.tenants.find(t => t.id === req.user.tenantId) || req.tenant;
   const user = db.users.find(u => u.id === req.user.id) || req.user;
   res.render('layout', {
-    title: 'Güvenlik',
+    title: 'GÃ¼venlik',
     appName: APP_NAME,
     supportEmail: SUPPORT_EMAIL,
     user: req.user,
@@ -4047,8 +4047,8 @@ app.get('/app/security', requireAuth, noStore, (req, res) => {
 
 
 // --- Launch Center (Owner) ---
-// Public launch öncesi “hazır mıyız?” kontrol ekranı.
-// Not: Bu ekran sadece Owner erişebilir.
+// Public launch Ã¶ncesi â€œhazÄ±r mÄ±yÄ±z?â€ kontrol ekranÄ±.
+// Not: Bu ekran sadece Owner eriÅŸebilir.
 
 function deriveEmailDomain(addr) {
   const s = String(addr || '').trim();
@@ -4147,7 +4147,7 @@ async function buildLaunchReport(req) {
     storage: {
       provider: storageProvider,
       s3Configured: isS3 ? Boolean((process.env.S3_BUCKET || '').trim()) : null,
-      hint: isS3 ? 'S3/R2 private bucket önerilir' : 'Local disk ise backup/restore ve disk doluluk alarmı şart',
+      hint: isS3 ? 'S3/R2 private bucket Ã¶nerilir' : 'Local disk ise backup/restore ve disk doluluk alarmÄ± ÅŸart',
     },
     logs: {
       securityLogExists,
@@ -4165,7 +4165,7 @@ async function buildLaunchReport(req) {
     plan: { code: plan.code, label: plan.label },
   };
 
-  // Derived “gate” signals
+  // Derived â€œgateâ€ signals
   report.gates = {
     httpsOk: !IS_PROD || isHttps,
     baseUrlOk: !IS_PROD || (baseUrlEnv && baseUrlEnv.startsWith('https://')),
@@ -4180,7 +4180,7 @@ async function buildLaunchReport(req) {
 }
 
 app.get('/app/launch', requireAuth, requireOwner, noStore, async (req, res) => {
-  flash(req, 'ok', 'Launch kontrol ekranı kaldırıldı. İlgili ayarlar Ayarlar sayfasında.');
+  flash(req, 'ok', 'Launch kontrol ekranÄ± kaldÄ±rÄ±ldÄ±. Ä°lgili ayarlar Ayarlar sayfasÄ±nda.');
   return res.redirect('/app/settings');
 });
 
@@ -4189,12 +4189,12 @@ app.get('/app/launch/report.json', requireAuth, requireOwner, noStore, async (re
 });
 
 app.post('/app/launch/test-email', requireAuth, requireOwner, emailTestLimiter, verifyCsrf, async (req, res) => {
-  flash(req, 'err', 'Launch kontrol kaldırıldı. SMTP testi için Ayarlar veya CLI kullanın.');
+  flash(req, 'err', 'Launch kontrol kaldÄ±rÄ±ldÄ±. SMTP testi iÃ§in Ayarlar veya CLI kullanÄ±n.');
   return res.redirect('/app/settings');
 });
 
 app.post('/app/launch/test-alert', requireAuth, requireOwner, emailTestLimiter, verifyCsrf, async (req, res) => {
-  flash(req, 'err', 'Launch kontrol kaldırıldı. Webhook testi için Ayarlar veya CLI kullanın.');
+  flash(req, 'err', 'Launch kontrol kaldÄ±rÄ±ldÄ±. Webhook testi iÃ§in Ayarlar veya CLI kullanÄ±n.');
   return res.redirect('/app/settings');
 });
 app.post('/app/security/mfa/start', requireAuth, verifyCsrf, (req, res) => {
@@ -4209,7 +4209,7 @@ app.post('/app/security/mfa/backup-regenerate', requireAuth, verifyCsrf, (req, r
   const db = readDB();
   const user = db.users.find(u => u.id === req.user.id);
   if (!user || !user.mfaEnabled) {
-    flash(req, 'err', 'Önce MFA etkin olmalı.');
+    flash(req, 'err', 'Ã–nce MFA etkin olmalÄ±.');
     return res.redirect('/app/security');
   }
   const codes = generateBackupCodes(10);
@@ -4232,7 +4232,7 @@ app.post('/app/security/mfa/backup-regenerate', requireAuth, verifyCsrf, (req, r
   req.session.mfaNewBackupCodes = codes;
   req.session.mfaNewBackupCodesForUser = user.id;
   req.session.mfaReturnTo = '/app/security';
-  flash(req, 'ok', 'Yeni yedek kodlar oluşturuldu.');
+  flash(req, 'ok', 'Yeni yedek kodlar oluÅŸturuldu.');
   return res.redirect('/mfa/done');
 });
 
@@ -4242,11 +4242,11 @@ app.post('/app/security/mfa/disable', requireAuth, verifyCsrf, (req, res) => {
   const db = readDB();
   const user = db.users.find(u => u.id === req.user.id);
   if (!user || !user.mfaEnabled) {
-    flash(req, 'err', 'MFA zaten kapalı.');
+    flash(req, 'err', 'MFA zaten kapalÄ±.');
     return res.redirect('/app/security');
   }
   if (!verifyPassword(password, user.passwordHash)) {
-    flash(req, 'err', 'Şifre hatalı.');
+    flash(req, 'err', 'Åifre hatalÄ±.');
     return res.redirect('/app/security');
   }
   const okTotp = totpVerify(code, user.mfaSecret, 1);
@@ -4258,7 +4258,7 @@ app.post('/app/security/mfa/disable', requireAuth, verifyCsrf, (req, res) => {
     if (idx >= 0) okBackup = true;
   }
   if (!okTotp && !okBackup) {
-    flash(req, 'err', 'Doğrulama kodu hatalı.');
+    flash(req, 'err', 'DoÄŸrulama kodu hatalÄ±.');
     return res.redirect('/app/security');
   }
 
@@ -4288,7 +4288,7 @@ app.post('/app/security/mfa/disable', requireAuth, verifyCsrf, (req, res) => {
     requestId: req.requestId,
   });
 
-  flash(req, 'ok', 'MFA kapatıldı.');
+  flash(req, 'ok', 'MFA kapatÄ±ldÄ±.');
   return res.redirect('/app/security');
 });
 
@@ -4309,7 +4309,7 @@ app.post('/app/security/tenant', requireAuth, requireOwner, verifyCsrf, (req, re
       at: nowISO(),
     });
   });
-  flash(req, 'ok', 'Güvenlik ayarları güncellendi.');
+  flash(req, 'ok', 'GÃ¼venlik ayarlarÄ± gÃ¼ncellendi.');
   return res.redirect('/app/security');
 });
 
@@ -4330,7 +4330,7 @@ app.post('/app/settings/tenant', requireAuth, requireOwner, verifyCsrf, (req, re
   const notifyOnRequestCreated = req.body.notifyOnRequestCreated === 'on';
 
   if (!tenantName) {
-    flash(req, 'err', 'Şirket adı boş olamaz.');
+    flash(req, 'err', 'Åirket adÄ± boÅŸ olamaz.');
     return res.redirect('/app/settings');
   }
 
@@ -4365,7 +4365,7 @@ app.post('/app/settings/tenant', requireAuth, requireOwner, verifyCsrf, (req, re
     });
   });
 
-  flash(req, 'ok', 'Şirket ayarları güncellendi.');
+  flash(req, 'ok', 'Åirket ayarlarÄ± gÃ¼ncellendi.');
   res.redirect('/app/settings');
 });
 
@@ -4389,9 +4389,9 @@ app.post('/app/settings/test-notifications', requireAuth, requireOwner, verifyCs
     });
 
     if (!r.sent) {
-      flash(req, 'err', 'Test bildirimi gönderilemedi (URL tanımlı değil ya da hata oldu).');
+      flash(req, 'err', 'Test bildirimi gÃ¶nderilemedi (URL tanÄ±mlÄ± deÄŸil ya da hata oldu).');
     } else {
-      flash(req, 'ok', `Test bildirimi gönderildi. (başarılı: ${r.sent})`);
+      flash(req, 'ok', `Test bildirimi gÃ¶nderildi. (baÅŸarÄ±lÄ±: ${r.sent})`);
     }
   } catch (e) {
     flash(req, 'err', 'Test bildirimi hata verdi.');
@@ -4404,7 +4404,7 @@ app.post('/app/settings/password', requireAuth, verifyCsrf, async (req, res) => 
   const currentPassword = String(req.body.currentPassword || '');
   const newPassword = String(req.body.newPassword || '');
   if (newPassword.length < 8) {
-    flash(req, 'err', 'Yeni şifre en az 8 karakter olmalı.');
+    flash(req, 'err', 'Yeni ÅŸifre en az 8 karakter olmalÄ±.');
     return res.redirect('/app/settings');
   }
   const db = readDB();
@@ -4415,7 +4415,7 @@ app.post('/app/settings/password', requireAuth, verifyCsrf, async (req, res) => 
   }
   const ok = await verifyPassword(currentPassword, u.passHash);
   if (!ok) {
-    flash(req, 'err', 'Mevcut şifre hatalı.');
+    flash(req, 'err', 'Mevcut ÅŸifre hatalÄ±.');
     return res.redirect('/app/settings');
   }
   const passHash = await hashPassword(newPassword);
@@ -4423,7 +4423,7 @@ app.post('/app/settings/password', requireAuth, verifyCsrf, async (req, res) => 
     const uu = db2.users.find(x => x.id === req.user.id);
     if (uu) uu.passHash = passHash;
   });
-  flash(req, 'ok', 'Şifre güncellendi.');
+  flash(req, 'ok', 'Åifre gÃ¼ncellendi.');
   res.redirect('/app/settings');
 });
 
@@ -4457,7 +4457,7 @@ async function runReminderJob() {
     const db = readDB();
     const baseUrl = (process.env.BASE_URL || '').trim();
     if (!baseUrl) {
-      // Email içindeki linkin çalışması için BASE_URL şart.
+      // Email iÃ§indeki linkin Ã§alÄ±ÅŸmasÄ± iÃ§in BASE_URL ÅŸart.
       return;
     }
 
@@ -4482,7 +4482,7 @@ async function runReminderJob() {
           await mailer.sendMail({
             from: process.env.SMTP_FROM || `${APP_NAME} <noreply@example.com>`,
             to: (r.vendor.email || '').trim(),
-            subject: `Hatırlatma — ${tenant.name}`,
+            subject: `HatÄ±rlatma â€” ${tenant.name}`,
             text: buildVendorReminderEmailText(tenant, r, vendorLink),
           });
           updates.push({ tenantId: tenant.id, requestId: r.id, daysLeft, to: (r.vendor.email || '').trim() });
@@ -4513,7 +4513,7 @@ async function runReminderJob() {
           });
         }
       });
-      console.log(`⏰ Auto reminder sent: ${updates.length}`);
+      console.log(`â° Auto reminder sent: ${updates.length}`);
     }
   } finally {
     reminderRunning = false;
@@ -4573,7 +4573,7 @@ async function runCleanupJob() {
       db2.meta.lastCleanupAt = nowISO2;
     });
 
-    if (deletions.length) console.log(`🧹 Cleanup: deleted ${deletions.length} archived requests`);
+    if (deletions.length) console.log(`ğŸ§¹ Cleanup: deleted ${deletions.length} archived requests`);
   } finally {
     cleanupRunning = false;
   }
@@ -4599,8 +4599,8 @@ if (truthy(process.env.CLEANUP_ENABLED || '1')) {
 // 404
 app.use((req, res) => {
   res.status(404).render('layout', {
-    title: 'Bulunamadı',
-    pageTitle: 'Bulunamadı',
+    title: 'BulunamadÄ±',
+    pageTitle: 'BulunamadÄ±',
     appName: APP_NAME,
     appVersion: APP_VERSION,
     supportEmail: SUPPORT_EMAIL,
@@ -4610,7 +4610,7 @@ app.use((req, res) => {
     cspNonce: res.locals.cspNonce || '',
     body: render('error', {
       status: 404,
-      message: 'Sayfa bulunamadı.',
+      message: 'Sayfa bulunamadÄ±.',
       requestId: req.requestId,
       supportEmail: SUPPORT_EMAIL
     })
@@ -4624,17 +4624,17 @@ app.use((err, req, res, next) => {
 
   // Normalize message/status for user (avoid leaking internals)
   let status = (err && (err.status || err.statusCode)) ? (err.status || err.statusCode) : 500;
-  let message = 'Bir hata oluştu.';
+  let message = 'Bir hata oluÅŸtu.';
 
-  if (err && (err.code === 'EBADCSRFTOKEN' || err.message === 'CSRF token hatalı.' || /CSRF token/i.test(err.message || ''))) {
+  if (err && (err.code === 'EBADCSRFTOKEN' || err.message === 'CSRF token hatalÄ±.' || /CSRF token/i.test(err.message || ''))) {
     status = 403;
-    message = 'Güvenlik doğrulaması başarısız. Sayfayı yenileyip tekrar deneyin.';
+    message = 'GÃ¼venlik doÄŸrulamasÄ± baÅŸarÄ±sÄ±z. SayfayÄ± yenileyip tekrar deneyin.';
   } else if (err && err.code === 'LIMIT_FILE_SIZE') {
     status = 413;
-    message = `Dosya çok büyük. Maksimum ${FILE_MAX_MB} MB.`;
+    message = `Dosya Ã§ok bÃ¼yÃ¼k. Maksimum ${FILE_MAX_MB} MB.`;
   } else if (err && err.code === 'UNSUPPORTED_FILE_TYPE') {
     status = 415;
-    message = err.message || 'Bu dosya türüne izin verilmiyor.';
+    message = err.message || 'Bu dosya tÃ¼rÃ¼ne izin verilmiyor.';
   }
 
   // Log server-side (with request id)
@@ -4672,8 +4672,8 @@ app.use((err, req, res, next) => {
   }
 
   return res.render('layout', {
-    title: status === 500 ? 'Hata' : 'Uyarı',
-    pageTitle: status === 500 ? 'Hata' : 'Uyarı',
+    title: status === 500 ? 'Hata' : 'UyarÄ±',
+    pageTitle: status === 500 ? 'Hata' : 'UyarÄ±',
     appName: APP_NAME,
     appVersion: APP_VERSION,
     supportEmail: SUPPORT_EMAIL,
@@ -4695,7 +4695,7 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ ${APP_NAME} çalışıyor: http://localhost:${PORT}`);
+  console.log(`âœ… ${APP_NAME} Ã§alÄ±ÅŸÄ±yor: http://localhost:${PORT}`);
   if (NODE_ENV !== 'production') {
     console.log(`   - .env: PORT=${PORT} FILE_MAX_MB=${FILE_MAX_MB}`);
   }
