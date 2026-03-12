@@ -320,3 +320,182 @@ details[open] > summary:before{ content: '▾'; }
 
 /* JS açıkken manuel upload butonunu gizle (dosya seçince otomatik yüklenir) */
 html.js .js-hide { display: none !important; }
+
+/* ==========================================
+   RESPONSIVE — Mobil & Tablet
+   ========================================== */
+
+/* --- Tablet (max 1024px) --- */
+@media (max-width: 1024px) {
+  .container { max-width: 100%; padding: 16px; }
+  .nav { flex-wrap: wrap; gap: 10px; padding: 12px 14px; }
+  .navlinks { gap: 10px; }
+  .card { padding: 14px; }
+  .table th, .table td { padding: 8px 6px; font-size: 12px; }
+}
+
+/* --- Mobil (max 768px) --- */
+@media (max-width: 768px) {
+  .container { padding: 10px; }
+
+  /* Navbar: dikey stack */
+  .nav {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 10px;
+  }
+  .brand {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 14px;
+  }
+  .brand .badge { font-size: 10px; padding: 2px 6px; }
+  .navlinks {
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .navlinks a, .navlinks .btn {
+    font-size: 12px;
+    padding: 7px 10px;
+  }
+
+  /* Kartlar */
+  .card { padding: 12px; border-radius: 10px; }
+  .card h2 { font-size: 16px; }
+
+  /* Grid: tek sütun */
+  .grid.two { grid-template-columns: 1fr; }
+
+  /* Tablo: yatay kaydırma */
+  .table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table th, .table td { white-space: nowrap; padding: 8px 8px; font-size: 11px; }
+
+  /* Butonlar */
+  .btn { padding: 8px 12px; font-size: 13px; border-radius: 10px; }
+  .btn.primary { padding: 10px 14px; }
+
+  /* Form elemanları */
+  input, select, textarea { padding: 10px; font-size: 14px; border-radius: 10px; }
+  textarea { min-height: 80px; }
+  label { font-size: 12px; margin: 8px 0 4px; }
+
+  /* Row: dikey stack */
+  .row { flex-direction: column; gap: 8px; }
+
+  /* Flash */
+  .flash { font-size: 13px; padding: 8px 10px; border-radius: 10px; }
+
+  /* Footer */
+  .footer { font-size: 11px; text-align: center; margin-top: 20px; }
+
+  /* Genel font boyutu */
+  .h1 { font-size: 26px; margin: 20px 0 6px; }
+  .p { font-size: 13px; }
+  .small { font-size: 11px; }
+  .pill { font-size: 10px; padding: 2px 8px; }
+  .status { font-size: 11px; padding: 2px 8px; }
+  .badge { font-size: 10px; padding: 2px 6px; }
+  .kbd { font-size: 11px; }
+
+  /* Template picker */
+  .templateMenu { min-width: unset; left: 0; right: 0; }
+  .tplChips { max-width: 100%; justify-content: flex-start; }
+  .tplChipsWrap { justify-content: flex-start; }
+  .tplChip { font-size: 11px; padding: 6px 8px; }
+
+  /* Vendor linki input */
+  .input[readonly] { font-size: 11px; }
+}
+
+/* --- Küçük mobil (max 480px) --- */
+@media (max-width: 480px) {
+  .container { padding: 6px; }
+  .nav { padding: 8px 10px; border-radius: 8px; }
+  .navlinks a, .navlinks .btn { font-size: 11px; padding: 6px 8px; }
+  .brand { font-size: 13px; }
+  .logoBox { width: 28px; height: 28px; font-size: 13px; border-radius: 8px; }
+
+  .card { padding: 10px; border-radius: 8px; }
+  .card h2 { font-size: 15px; margin-bottom: 6px; }
+
+  .btn { padding: 7px 10px; font-size: 12px; border-radius: 8px; }
+
+  input, select, textarea { padding: 9px; font-size: 13px; }
+
+  .table th, .table td { padding: 6px 5px; font-size: 10px; }
+
+  /* Dashboard metric kartları */
+  .metric-card { padding: 10px !important; }
+  .metric-card .metric-value { font-size: 1.4em !important; }
+
+  .h1 { font-size: 22px; }
+  .footer { font-size: 10px; }
+}
+
+/* --- Touch cihazlar: daha büyük dokunma alanları --- */
+@media (hover: none) and (pointer: coarse) {
+  .btn { min-height: 44px; min-width: 44px; }
+  .navlinks a { min-height: 40px; display: inline-flex; align-items: center; }
+  input, select, textarea { min-height: 44px; }
+  .table td a.btn { min-height: 36px; }
+  input[type="checkbox"] { width: 20px; height: 20px; }
+  select { padding-right: 30px; }
+  details > summary { padding: 6px 0; }
+}
+
+/* --- Yatay kaydırılabilir tablo wrapper --- */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 12px;
+}
+@media (max-width: 768px) {
+  .table-responsive { border-radius: 10px; }
+  .table-responsive .table { min-width: 600px; }
+}
+
+/* --- Dashboard grid responsive --- */
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+@media (max-width: 480px) {
+  .dash-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+}
+
+/* --- Form layout (search/filter) responsive --- */
+.filter-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+@media (max-width: 768px) {
+  .filter-bar { flex-direction: column; align-items: stretch; }
+  .filter-bar > * { width: 100%; }
+  .filter-bar input, .filter-bar select { width: 100%; }
+}
+
+/* --- Bildirim badge responsive --- */
+@media (max-width: 768px) {
+  .navlinks a[href*="notifications"] span {
+    top: -4px;
+    right: -6px;
+    font-size: 0.6em;
+    padding: 1px 4px;
+  }
+}
+
+/* --- Print --- */
+@media print {
+  .nav, .navlinks, .footer, .btn, form { display: none !important; }
+  .container { max-width: 100%; padding: 0; }
+  .card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+  body { background: #fff; }
+}

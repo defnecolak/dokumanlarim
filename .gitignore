@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Data & uploads (runtime, not code)
+data/
+uploads/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+
+# Build / temp
+dist/
+tmp/
+.tmp/
+*.bak
