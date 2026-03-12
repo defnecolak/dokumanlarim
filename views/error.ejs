@@ -1,0 +1,35 @@
+<div class="card">
+  <div class="card-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+    <div>
+      <h2 style="margin:0;">Bir şeyler ters gitti</h2>
+      <div class="muted" style="margin-top:6px; line-height:1.5;">
+        <% if (typeof status !== 'undefined') { %>
+          Hata kodu: <b><%= status %></b>
+        <% } %>
+        <% if (requestId) { %>
+          <span class="muted">·</span>
+          Takip: <span class="pill"><%= requestId %></span>
+        <% } %>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <a class="btn" href="javascript:location.reload()">Sayfayı yenile</a>
+      <a class="btn" href="/">Ana sayfa</a>
+    </div>
+  </div>
+
+  <div class="card-body" style="line-height:1.6;">
+    <p style="margin-top:0;"><%= message || 'Beklenmeyen bir hata oluştu.' %></p>
+
+    <div class="muted" style="margin-top:12px;">
+      Destek: <a href="mailto:<%= supportEmail %>"><%= supportEmail %></a>
+    </div>
+
+    <% if (showStack && stack) { %>
+      <details style="margin-top:16px;">
+        <summary>Teknik detay (dev)</summary>
+        <pre style="white-space:pre-wrap; background:rgba(0,0,0,0.04); padding:12px; border-radius:12px; overflow:auto;"><%= stack %></pre>
+      </details>
+    <% } %>
+  </div>
+</div>

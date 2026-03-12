@@ -1,0 +1,51 @@
+version: "3.8"
+
+# Basit observability stack: Loki + Promtail + Grafana
+# Amaç: Dökümanlarım'ın JSON loglarını (security.log / access.log) merkezi bir yerde toplamak.
+#
+# Çalıştırma:
+#   cd ops/observability
+#   docker compose -f docker-compose.loki.yml up -d
+#
+# Grafana:
+#   http://localhost:3001
+#   kullanıcı: admin
+#   şifre: admin
+# (Prod'da değiştir!)
+
+services:
+  loki:
+    image: grafana/loki:2.9.8
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:2.9.8
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./promtail.yml:/etc/promtail/config.yml:ro
+      # Proje root'undaki ./data klasörünü buraya read-only mount ediyoruz.
+      # docker compose'u bu dosyanın bulunduğu klasörden çalıştırdığımız için iki üst dizine çıkıyoruz.
+      - ../../data:/var/log/dokumanlarim:ro
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.4.6
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana-provisioning:/etc/grafana/provisioning:ro
+    restart: unless-stopped
+
+volumes:
+  loki_data: {}
+  grafana_data: {}

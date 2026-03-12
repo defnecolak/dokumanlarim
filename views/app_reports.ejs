@@ -1,0 +1,114 @@
+<div style="margin-top:20px;" class="card">
+  <h2><%= typeof t === 'function' ? t(lang, 'reports.title') : 'Raporlar' %></h2>
+
+  <!-- Date Range Filter -->
+  <form method="get" action="/app/reports" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin:12px 0;">
+    <div>
+      <label class="small">Başlangıç</label>
+      <input type="date" name="from" value="<%= from %>" class="input">
+    </div>
+    <div>
+      <label class="small">Bitiş</label>
+      <input type="date" name="to" value="<%= to %>" class="input">
+    </div>
+    <button class="btn primary" type="submit">Filtrele</button>
+    <% if (from || to) { %><a href="/app/reports" class="btn">Temizle</a><% } %>
+    <a href="/app/reports/export.csv" class="btn">CSV İndir</a>
+  </form>
+
+  <div class="hr"></div>
+
+  <!-- Summary Cards -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:12px;margin:16px 0;">
+    <div style="background:#f0f9ff;border-radius:8px;padding:16px;text-align:center;">
+      <div style="font-size:1.8em;font-weight:700;color:#1e40af;"><%= totalRequests %></div>
+      <div class="small">Toplam Talep</div>
+    </div>
+    <div style="background:#f0fdf4;border-radius:8px;padding:16px;text-align:center;">
+      <div style="font-size:1.8em;font-weight:700;color:#166534;"><%= completedDocs %></div>
+      <div class="small">Tamamlanan Belge</div>
+    </div>
+    <div style="background:#fef3c7;border-radius:8px;padding:16px;text-align:center;">
+      <div style="font-size:1.8em;font-weight:700;color:#92400e;"><%= totalDocs - completedDocs %></div>
+      <div class="small">Bekleyen Belge</div>
+    </div>
+    <div style="background:#fef2f2;border-radius:8px;padding:16px;text-align:center;">
+      <div style="font-size:1.8em;font-weight:700;color:#991b1b;"><%= expiredDocs %></div>
+      <div class="small">Süresi Dolmuş</div>
+    </div>
+  </div>
+
+  <!-- Status Breakdown -->
+  <div class="hr"></div>
+  <h3>Durum Dağılımı</h3>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin:12px 0;">
+    <% const statusColors = { open: '#3b82f6', submitted: '#f59e0b', approved: '#10b981', rejected: '#ef4444', archived: '#6b7280' }; %>
+    <% Object.entries(statusCounts).forEach(([s, count]) => { %>
+      <div style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:#f9fafb;border-radius:6px;">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:<%= statusColors[s] || '#9ca3af' %>;"></span>
+        <span class="status <%= s %>"><%= typeof statusLabel === 'function' ? statusLabel(s) : s %></span>
+        <b><%= count %></b>
+      </div>
+    <% }) %>
+  </div>
+</div>
+
+<!-- Vendor Performance -->
+<div style="margin-top:18px;" class="card">
+  <h2>Tedarikçi Performansı</h2>
+  <% if (vendorPerformance.length === 0) { %>
+    <div class="p muted">Henüz veri yok.</div>
+  <% } else { %>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Tedarikçi</th>
+          <th>Şirket</th>
+          <th>Toplam</th>
+          <th>Tamamlanan</th>
+          <th>Uyum %</th>
+          <th>Ort. Süre (gün)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% vendorPerformance.slice(0, 20).forEach(v => { %>
+          <tr>
+            <td><b><%= v.name %></b></td>
+            <td class="small"><%= v.company %></td>
+            <td><%= v.total %></td>
+            <td><%= v.completed %></td>
+            <td>
+              <span class="pill <%= v.complianceRate >= 80 ? 'ok' : v.complianceRate >= 50 ? 'warn' : 'err' %>">
+                <%= v.complianceRate %>%
+              </span>
+            </td>
+            <td><%= v.avgDays %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<!-- Monthly Breakdown -->
+<% const months = Object.keys(monthlyData).sort(); %>
+<% if (months.length > 0) { %>
+<div style="margin-top:18px;" class="card">
+  <h2>Aylık Dağılım</h2>
+  <table class="table">
+    <thead>
+      <tr><th>Ay</th><th>Oluşturulan</th><th>Tamamlanan</th><th>Oran</th></tr>
+    </thead>
+    <tbody>
+      <% months.forEach(m => { const d = monthlyData[m]; const rate = d.created > 0 ? Math.round((d.completed/d.created)*100) : 0; %>
+        <tr>
+          <td><b><%= m %></b></td>
+          <td><%= d.created %></td>
+          <td><%= d.completed %></td>
+          <td><span class="pill <%= rate >= 80 ? 'ok' : rate >= 50 ? 'warn' : 'err' %>"><%= rate %>%</span></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<% } %>

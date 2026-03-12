@@ -1,0 +1,54 @@
+<div style="margin-top:20px;" class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <h2><%= typeof t === 'function' ? t(lang, 'notifications.title') : 'Bildirimler' %></h2>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <a href="/app/notifications<%= unreadOnly ? '' : '?unread=1' %>" class="btn"><%= unreadOnly ? 'Tümünü göster' : 'Sadece okunmamış' %></a>
+      <% if (notifCount > 0) { %>
+        <form method="post" action="/app/notifications/read-all" style="display:inline;">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button class="btn" type="submit">Tümünü oku</button>
+        </form>
+      <% } %>
+    </div>
+  </div>
+  <div class="hr"></div>
+
+  <% if (notifications.length === 0) { %>
+    <div class="p" style="text-align:center;padding:40px 0;">
+      <div style="font-size:2em;margin-bottom:10px;">🔔</div>
+      <div class="muted">Bildirim yok.</div>
+    </div>
+  <% } else { %>
+    <div style="display:flex;flex-direction:column;gap:1px;">
+      <% notifications.forEach(n => { %>
+        <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 8px;background:<%= n.read ? 'transparent' : 'rgba(59,130,246,0.05)' %>;border-radius:6px;">
+          <div style="flex:0 0 8px;padding-top:6px;">
+            <% if (!n.read) { %><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#3b82f6;"></span><% } %>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;">
+              <b style="font-size:0.95em;"><%= n.title %></b>
+              <span class="small muted"><%= (n.createdAt || '').slice(0, 16).replace('T', ' ') %></span>
+            </div>
+            <div class="small" style="margin-top:2px;"><%= n.message %></div>
+            <div style="margin-top:6px;display:flex;gap:8px;align-items:center;">
+              <% if (n.link) { %><a href="<%= n.link %>" class="btn" style="font-size:0.8em;">Görüntüle</a><% } %>
+              <% if (!n.read) { %>
+                <form method="post" action="/app/notifications/read/<%= n.id %>" style="display:inline;">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="btn" type="submit" style="font-size:0.8em;">Okundu</button>
+                </form>
+              <% } %>
+            </div>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+
+    <% if (notifications.length >= 20) { %>
+      <div style="text-align:center;margin-top:16px;">
+        <a href="/app/notifications?page=<%= page + 1 %><%= unreadOnly ? '&unread=1' : '' %>" class="btn">Daha fazla</a>
+      </div>
+    <% } %>
+  <% } %>
+</div>

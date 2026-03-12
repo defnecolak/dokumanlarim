@@ -1,0 +1,93 @@
+<div style="margin-top:20px;" class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+    <h2>Talepler</h2>
+    <a href="/app/requests/new" class="btn primary">+ Yeni Talep</a>
+  </div>
+
+  <!-- Search & Filter Bar -->
+  <form method="get" action="/app/requests" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin:12px 0;">
+    <div style="flex:1;min-width:200px;">
+      <input type="text" name="q" value="<%= typeof q !== 'undefined' ? q : '' %>" placeholder="Tedarikçi adı, şirket veya e-posta ile ara..." class="input" style="width:100%;">
+    </div>
+    <select name="status" class="input">
+      <option value="">Tüm Durumlar</option>
+      <option value="open" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'open') ? 'selected' : '' %>>Açık</option>
+      <option value="submitted" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'submitted') ? 'selected' : '' %>>Gönderildi</option>
+      <option value="approved" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'approved') ? 'selected' : '' %>>Onaylandı</option>
+      <option value="rejected" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'rejected') ? 'selected' : '' %>>Reddedildi</option>
+      <option value="archived" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'archived') ? 'selected' : '' %>>Arşiv</option>
+    </select>
+    <select name="sort" class="input">
+      <option value="newest" <%= (typeof sortBy !== 'undefined' && sortBy === 'newest') ? 'selected' : '' %>>En yeni</option>
+      <option value="oldest" <%= (typeof sortBy !== 'undefined' && sortBy === 'oldest') ? 'selected' : '' %>>En eski</option>
+      <option value="due" <%= (typeof sortBy !== 'undefined' && sortBy === 'due') ? 'selected' : '' %>>Son tarih</option>
+      <option value="vendor" <%= (typeof sortBy !== 'undefined' && sortBy === 'vendor') ? 'selected' : '' %>>Tedarikçi A-Z</option>
+    </select>
+    <button class="btn primary" type="submit">Ara</button>
+    <% if ((typeof q !== 'undefined' && q) || (typeof statusFilter !== 'undefined' && statusFilter)) { %>
+      <a href="/app/requests" class="btn">Temizle</a>
+    <% } %>
+  </form>
+
+  <div class="hr"></div>
+
+  <!-- Bulk Actions -->
+  <form method="post" action="/app/requests/bulk" id="bulkForm">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+      <label class="small" style="display:flex;align-items:center;gap:4px;">
+        <input type="checkbox" id="selectAll" onchange="document.querySelectorAll('.bulk-check').forEach(c=>c.checked=this.checked)"> Tümünü seç
+      </label>
+      <select name="action" class="input" style="font-size:0.85em;">
+        <option value="">Toplu İşlem...</option>
+        <option value="approve">Onayla</option>
+        <option value="reject">Reddet</option>
+        <option value="archive">Arşivle</option>
+      </select>
+      <button class="btn" type="submit" onclick="return confirm('Seçili talepler güncellensin mi?')">Uygula</button>
+    </div>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th style="width:30px;"></th>
+        <th>Zaman</th>
+        <th>Tedarikçi</th>
+        <th>Durum</th>
+        <th>İlerleme</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    <% if (requests.length === 0) { %>
+      <tr><td colspan="6" class="p">Henüz talep yok.</td></tr>
+    <% } %>
+    <% requests.forEach(r => { %>
+      <tr>
+        <td><input type="checkbox" name="ids" value="<%= r.publicId || r.id %>" class="bulk-check"></td>
+        <td class="small">
+          <div><%= r.createdAt.slice(0,16).replace('T',' ') %></div>
+          <div class="small">No: <%= r.publicId || r.id %></div>
+          <% if (r.dueDate) { %><div class="small muted">Son: <%= r.dueDate %></div><% } %>
+        </td>
+        <td>
+          <div><b><%= r.vendor.name %></b> <span class="small">— <%= r.vendor.company || '-' %></span></div>
+          <div class="small"><%= r.vendor.email || '' %></div>
+        </td>
+        <td><span class="status <%= r.status %>"><%= statusLabel(r.status) %></span></td>
+        <td class="small">
+          <div><%= r.progress.done %>/<%= r.progress.required %> zorunlu · <%= r.progress.total %> toplam</div>
+          <% if (r.health && (r.health.errors || r.health.warnings)) { %>
+            <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
+              <% if (r.health.errors) { %><span class="pill err"><%= r.health.errors %> eksik</span><% } %>
+              <% if (r.health.warnings) { %><span class="pill warn"><%= r.health.warnings %> uyarı</span><% } %>
+            </div>
+          <% } %>
+        </td>
+        <td><a class="btn" href="/app/requests/<%= encodeURIComponent(r.publicId || r.id) %>">Aç</a></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+  </form>
+</div>

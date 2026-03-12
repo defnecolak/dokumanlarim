@@ -1,0 +1,64 @@
+<div style="margin-top:20px;" class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+    <h2>Aktivite Geçmişi</h2>
+    <div class="small muted"><%= totalCount %> kayıt</div>
+  </div>
+
+  <!-- Filter -->
+  <form method="get" action="/app/activity" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin:12px 0;">
+    <div>
+      <label class="small">İşlem Tipi</label>
+      <select name="action" class="input">
+        <option value="">Tümü</option>
+        <% actionTypes.forEach(a => { %>
+          <option value="<%= a %>" <%= actionFilter === a ? 'selected' : '' %>><%= a %></option>
+        <% }) %>
+      </select>
+    </div>
+    <button class="btn" type="submit">Filtrele</button>
+    <% if (actionFilter) { %><a href="/app/activity" class="btn">Temizle</a><% } %>
+  </form>
+
+  <div class="hr"></div>
+
+  <% if (audit.length === 0) { %>
+    <div class="p muted" style="text-align:center;padding:30px 0;">Aktivite bulunamadı.</div>
+  <% } else { %>
+    <div style="position:relative;padding-left:24px;">
+      <!-- Timeline line -->
+      <div style="position:absolute;left:7px;top:0;bottom:0;width:2px;background:#e5e7eb;"></div>
+
+      <% audit.forEach((a, i) => { %>
+        <div style="position:relative;padding-bottom:20px;">
+          <!-- Timeline dot -->
+          <div style="position:absolute;left:-20px;top:4px;width:12px;height:12px;border-radius:50%;background:<%= (a.action||'').includes('upload') ? '#10b981' : (a.action||'').includes('delete') ? '#ef4444' : (a.action||'').includes('status') ? '#f59e0b' : '#3b82f6' %>;border:2px solid #fff;"></div>
+
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
+            <div>
+              <span class="badge" style="font-size:0.75em;"><%= a.action %></span>
+              <b class="small" style="margin-left:4px;"><%= a.actor %></b>
+            </div>
+            <span class="small muted"><%= (a.at||'').slice(0,16).replace('T',' ') %></span>
+          </div>
+          <% if (a.detailText) { %>
+            <div class="small" style="margin-top:4px;color:#6b7280;"><%= a.detailText %></div>
+          <% } %>
+          <% if (a.requestId) { %>
+            <div style="margin-top:4px;"><a href="/app/requests/<%= encodeURIComponent(a.requestId) %>" class="btn" style="font-size:0.75em;">Talebi Aç</a></div>
+          <% } %>
+        </div>
+      <% }) %>
+    </div>
+
+    <!-- Pagination -->
+    <div style="display:flex;justify-content:center;gap:8px;margin-top:16px;">
+      <% if (page > 1) { %>
+        <a href="/app/activity?page=<%= page - 1 %><%= actionFilter ? '&action=' + encodeURIComponent(actionFilter) : '' %>" class="btn">← Önceki</a>
+      <% } %>
+      <span class="small muted" style="padding:8px;">Sayfa <%= page %> / <%= Math.ceil(totalCount / limit) || 1 %></span>
+      <% if (page * limit < totalCount) { %>
+        <a href="/app/activity?page=<%= page + 1 %><%= actionFilter ? '&action=' + encodeURIComponent(actionFilter) : '' %>" class="btn">Sonraki →</a>
+      <% } %>
+    </div>
+  <% } %>
+</div>

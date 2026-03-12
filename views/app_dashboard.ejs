@@ -1,0 +1,333 @@
+<%
+// Turkish multi-tenant SaaS dashboard
+const t = t || ((lang, key) => key); // Fallback translation function
+const expiringCount = expiringDocs ? expiringDocs.length : 0;
+%>
+
+<div class="container-fluid">
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1><%= t(lang, 'dashboard.title') || 'Kontrol Paneli' %></h1>
+  </div>
+
+  <!-- Top Metrics Row -->
+  <div class="grid grid-cols-4 gap-4 mb-6">
+    <!-- Total Requests Card -->
+    <div class="card">
+      <div class="card-body">
+        <div class="metric-label"><%= t(lang, 'dashboard.totalRequests') || 'Toplam İstekler' %></div>
+        <div class="metric-value"><%= stats.totalRequests || 0 %></div>
+        <div class="metric-description small muted"><%= t(lang, 'dashboard.allTime') || 'Tüm Zamanlar' %></div>
+      </div>
+    </div>
+
+    <!-- Active Requests Card -->
+    <div class="card">
+      <div class="card-body">
+        <div class="metric-label"><%= t(lang, 'dashboard.activeRequests') || 'Aktif İstekler' %></div>
+        <div class="metric-value"><%= stats.activeRequests || 0 %></div>
+        <div class="metric-description small muted"><%= t(lang, 'dashboard.inProgress') || 'İşlemde' %></div>
+      </div>
+    </div>
+
+    <!-- Pending Documents Card -->
+    <div class="card">
+      <div class="card-body">
+        <div class="metric-label"><%= t(lang, 'dashboard.pendingDocs') || 'Bekleyen Belgeler' %></div>
+        <div class="metric-value"><%= stats.pendingDocs || 0 %></div>
+        <div class="metric-description small muted"><%= t(lang, 'dashboard.awaitingSubmission') || 'Gönderim Bekleyen' %></div>
+      </div>
+    </div>
+
+    <!-- Completion Rate Card -->
+    <div class="card">
+      <div class="card-body">
+        <div class="metric-label"><%= t(lang, 'dashboard.completionRate') || 'Tamamlama Oranı' %></div>
+        <div class="metric-value"><%= Math.round(stats.completionRate || 0) %>%</div>
+        <div class="metric-description small muted"><%= t(lang, 'dashboard.percentage') || 'Yüzde' %></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Expiring Documents and Recent Activity Row -->
+  <div class="grid grid-cols-2 gap-6 mb-6">
+    <!-- Expiring Documents Card -->
+    <div class="card">
+      <div class="card-header">
+        <h3><%= t(lang, 'dashboard.expiringSoon') || 'Yaklaşan Son Kullanma Tarihleri' %></h3>
+      </div>
+      <div class="card-body">
+        <% if (expiringDocs && expiringDocs.length > 0) { %>
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th><%= t(lang, 'dashboard.vendor') || 'Satıcı' %></th>
+                <th><%= t(lang, 'dashboard.document') || 'Belge' %></th>
+                <th><%= t(lang, 'dashboard.expiryDate') || 'Son Tarih' %></th>
+                <th><%= t(lang, 'dashboard.daysLeft') || 'Kalan Gün' %></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% expiringDocs.slice(0, 10).forEach(doc => {
+                let pillClass = 'pill';
+                if (doc.daysLeft < 7) {
+                  pillClass += ' pill-err';
+                } else if (doc.daysLeft < 30) {
+                  pillClass += ' pill-warn';
+                }
+              %>
+                <tr>
+                  <td><%= doc.vendorName %></td>
+                  <td><strong><%= doc.docLabel %></strong></td>
+                  <td class="small"><%= new Date(doc.expiryDate).toLocaleDateString('tr-TR') %></td>
+                  <td>
+                    <span class="<%= pillClass %>">
+                      <%= doc.daysLeft %> <%= t(lang, 'dashboard.days') || 'gün' %>
+                    </span>
+                  </td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+          <% if (expiringDocs.length > 10) { %>
+            <div class="mt-3">
+              <a href="/requests?filter=expiring" class="btn btn-sm btn-secondary">
+                <%= t(lang, 'dashboard.viewMore') || 'Tümünü Gör' %>
+              </a>
+            </div>
+          <% } %>
+        <% } else { %>
+          <div class="alert alert-info">
+            <%= t(lang, 'dashboard.noExpiringDocs') || 'Yaklaşan son tarihleri olan belge yok.' %>
+          </div>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- Recent Activity Card -->
+    <div class="card">
+      <div class="card-header">
+        <h3><%= t(lang, 'dashboard.recentActivity') || 'Son Aktiviteler' %></h3>
+      </div>
+      <div class="card-body">
+        <% if (recentActivity && recentActivity.length > 0) { %>
+          <div class="activity-feed">
+            <% recentActivity.slice(0, 15).forEach((activity, idx) => { %>
+              <div class="activity-item">
+                <div class="activity-timestamp small muted">
+                  <%= new Date(activity.at).toLocaleString('tr-TR', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }) %>
+                </div>
+                <div class="activity-content">
+                  <strong><%= activity.actor %></strong>
+                  <span class="activity-action"><%= activity.action %></span>
+                  <% if (activity.detailText) { %>
+                    <p class="small activity-detail"><%= activity.detailText %></p>
+                  <% } %>
+                  <% if (activity.requestId) { %>
+                    <a href="/requests/<%= activity.requestId %>" class="btn btn-xs btn-link">
+                      <%= t(lang, 'dashboard.viewRequest') || 'İsteği Gör' %>
+                    </a>
+                  <% } %>
+                </div>
+                <% if (idx < recentActivity.length - 1) { %>
+                  <hr class="hr-sm">
+                <% } %>
+              </div>
+            <% }); %>
+          </div>
+        <% } else { %>
+          <div class="alert alert-info">
+            <%= t(lang, 'dashboard.noRecentActivity') || 'Henüz aktivite yok.' %>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary Stats Row -->
+  <div class="grid grid-cols-3 gap-4">
+    <!-- Total Vendors -->
+    <div class="card">
+      <div class="card-body text-center">
+        <div class="metric-label"><%= t(lang, 'dashboard.totalVendors') || 'Toplam Satıcı' %></div>
+        <div class="metric-value large"><%= stats.totalVendors || 0 %></div>
+      </div>
+    </div>
+
+    <!-- Average Completion Time -->
+    <div class="card">
+      <div class="card-body text-center">
+        <div class="metric-label"><%= t(lang, 'dashboard.avgCompletionTime') || 'Ort. Tamamlama Süresi' %></div>
+        <div class="metric-value large"><%= stats.avgCompletionDays || 0 %></div>
+        <div class="metric-description small muted"><%= t(lang, 'dashboard.days') || 'gün' %></div>
+      </div>
+    </div>
+
+    <!-- Expiring Soon Count -->
+    <div class="card">
+      <div class="card-body text-center">
+        <div class="metric-label"><%= t(lang, 'dashboard.expiringSoonCount') || 'Yakında Sona Erecek' %></div>
+        <div class="metric-value large"><%= expiringCount %></div>
+        <div class="metric-description small muted">
+          <% if (expiringCount > 0) { %>
+            <a href="#expiring-docs" class="link">
+              <%= t(lang, 'dashboard.viewDetails') || 'Ayrıntıları Gör' %>
+            </a>
+          <% } else { %>
+            <%= t(lang, 'dashboard.allGood') || 'Hepsi temiz' %>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden CSRF Token -->
+  <input type="hidden" name="csrfToken" value="<%= csrfToken %>" />
+</div>
+
+<style>
+.metric-label {
+  font-size: 0.875rem;
+  color: #6c757d;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.metric-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #212529;
+  line-height: 1;
+}
+
+.metric-value.large {
+  font-size: 2.5rem;
+}
+
+.metric-description {
+  margin-top: 0.5rem;
+  color: #6c757d;
+}
+
+.activity-feed {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.activity-item {
+  padding: 0.5rem 0;
+}
+
+.activity-timestamp {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.activity-action {
+  color: #495057;
+  margin: 0 0.25rem;
+}
+
+.activity-detail {
+  margin: 0.25rem 0 0.5rem 0;
+  color: #6c757d;
+}
+
+.pill {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+.pill-err {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.pill-warn {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.hr-sm {
+  margin: 0.5rem 0;
+  opacity: 0.5;
+}
+
+.grid {
+  display: grid;
+}
+
+.grid-cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.grid-cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.grid-cols-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.gap-4 {
+  gap: 1.5rem;
+}
+
+.gap-6 {
+  gap: 2rem;
+}
+
+.mb-3 {
+  margin-bottom: 1rem;
+}
+
+.mb-6 {
+  margin-bottom: 2rem;
+}
+
+.mt-3 {
+  margin-top: 1rem;
+}
+
+@media (max-width: 1200px) {
+  .grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .grid-cols-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .grid-cols-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .grid-cols-4,
+  .grid-cols-2,
+  .grid-cols-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .metric-value {
+    font-size: 1.75rem;
+  }
+
+  .metric-value.large {
+    font-size: 2rem;
+  }
+}
+</style>

@@ -1,0 +1,37 @@
+<div class="grid two" style="margin-top:20px;">
+  <div class="card">
+    <h2>E-posta doğrulama gerekli</h2>
+    <div class="p">
+      Devam etmek için <b><%= user.email %></b> adresini doğrulaman gerekiyor.
+      Doğrulama linkini e-postana gönderdik.
+    </div>
+
+    <% if (!emailEnabled) { %>
+      <div class="flash err">
+        <b>SMTP ayarlı değil.</b> Public launch için SMTP girmen gerekiyor.
+        <div class="small" style="margin-top:6px;">Dev ortamı için doğrulama linki:</div>
+        <% if (devVerifyLink) { %>
+          <div style="margin-top:8px;"><a href="<%= devVerifyLink %>"><%= devVerifyLink %></a></div>
+        <% } %>
+      </div>
+    <% } %>
+
+    <div class="hr"></div>
+
+    <form method="post" action="/verify-email/resend">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="btn primary" type="submit">Doğrulama linkini yeniden gönder</button>
+      <a class="btn" href="/app/requests">Devam</a>
+    </form>
+
+    <div class="small" style="margin-top:10px;">Mail gelmiyorsa spam/junk klasörünü kontrol et.</div>
+  </div>
+
+  <div class="card">
+    <h2>Neden doğrulama?</h2>
+    <div class="p">
+      Public SaaS ortamında sahte kayıtları ve spam'i azaltmak için e-posta doğrulaması kullanıyoruz.
+      Doğrulandıktan sonra takım davetleri, hatırlatmalar ve şifre sıfırlama sorunsuz çalışır.
+    </div>
+  </div>
+</div>

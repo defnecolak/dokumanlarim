@@ -1,0 +1,41 @@
+{
+  "name": "vendor-onboarding-portal",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Dökümanlarım (Vendor Onboarding) Portalı - SaaS multi-tenant + iyzico + ekip daveti + otomatik hatırlatma + S3/R2 opsiyonel",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "backup": "node scripts/backup.js",
+    "export:csv": "node scripts/export_csv.js",
+    "gen:secrets": "node scripts/gen_secrets.js",
+    "doctor": "node scripts/doctor.js",
+    "smoke": "node scripts/smoke.js",
+    "smtp:test": "node scripts/smtp_test.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.744.0",
+    "bcryptjs": "^2.4.3",
+    "cookie-session": "^2.0.0",
+    "dotenv": "^16.4.5",
+    "ejs": "^4.0.1",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^7.1.0",
+    "mime-types": "^2.1.35",
+    "morgan": "^1.10.0",
+    "multer": "^2.0.0",
+    "nanoid": "^5.0.7",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^8.0.1",
+    "yazl": "^2.5.1"
+  },
+  "overrides": {
+    "minimatch": "^10.2.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

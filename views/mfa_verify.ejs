@@ -1,0 +1,39 @@
+<div class="grid two">
+  <div class="card">
+    <h2>MFA doğrulama</h2>
+    <p class="p">Hesabın için çok faktörlü doğrulama açık. Lütfen doğrulayıcı uygulamandaki 6 haneli kodu gir.</p>
+    <% if (userEmail) { %>
+      <div class="badge" style="margin:8px 0 14px; display:inline-block"><%= userEmail %></div>
+    <% } %>
+    <form method="post" action="/mfa">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Kod (TOTP)</label>
+      <input name="code" autocomplete="one-time-code" inputmode="numeric" placeholder="123456">
+      <div style="height:10px"></div>
+      <button class="btn primary" type="submit">Doğrula</button>
+    </form>
+
+    <hr style="border:0; border-top:1px solid var(--border); margin:16px 0">
+
+    <p class="p">Telefonuna erişemiyorsan yedek kod kullanabilirsin.</p>
+    <form method="post" action="/mfa">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Yedek kod</label>
+      <input name="backup" autocomplete="one-time-code" placeholder="XXXX-XXXX-XXXX">
+      <div style="height:10px"></div>
+      <button class="btn" type="submit">Yedek kod ile giriş</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Güvenlik notu</h2>
+    <p class="p">
+      MFA, şifre sızsa bile hesabının ele geçirilmesini ciddi ölçüde zorlaştırır.
+      Kod 30 saniyede bir değişir.
+    </p>
+    <p class="p">
+      İpucu: Kurumsal dağıtımda <span class="kbd">SECURITY_ALERT_WEBHOOK_URL</span> ile başarısız girişleri,
+      CSRF uyuşmazlıklarını ve kilitlemeleri merkezi log/alert sistemine akıtabilirsin.
+    </p>
+  </div>
+</div>

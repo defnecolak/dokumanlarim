@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title><%= title %> — <%= appName %></title>
+  <link rel="icon" type="image/svg+xml" href="/public/favicon.svg?v=<%= appVersion %>" />
+  <!-- Cache-buster so browser updates CSS/JS immediately after an upgrade -->
+  <link rel="stylesheet" href="/public/styles.css?v=<%= appVersion %>" />
+  <% if (typeof noindex !== 'undefined' && noindex) { %><meta name="robots" content="noindex,nofollow" /><% } %>
+</head>
+<body>
+  <div class="container">
+    <div class="nav">
+      <div class="brand">
+        <div class="logoBox">D</div>
+        <div><%= appName %></div>
+        <% if (typeof tenant !== 'undefined' && tenant) { %><span class="badge"><%= tenant.name %></span><% } %>
+        <% if (typeof plan !== 'undefined' && plan) { %><span class="badge">Plan: <%= plan.label %></span><% } %>
+      </div>
+      <div class="navlinks">
+        <% if (typeof user !== 'undefined' && user) { %>
+  <a href="/app/requests">Talepler</a>
+  <a href="/app/requests/new">Yeni Talep</a>
+  <% if (user.role === 'owner') { %>
+    <a href="/app/team">Ekip</a>
+    <a href="/app/templates">Şablonlar</a>
+    <a href="/app/billing">Plan/Ödeme</a>
+  <% } %>
+  <a href="/app/settings">Ayarlar</a>
+  <form method="post" action="/logout" style="display:inline;">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button class="btn" type="submit">Çıkış</button>
+  </form>
+<% } else { %>
+  <a href="/login">Giriş</a>
+  <a class="btn primary" href="/signup">Kayıt</a>
+<% } %>
+      </div>
+    </div>
+
+    <% if (typeof flash !== 'undefined' && flash && flash.message) { %>
+      <div class="flash <%= flash.type === 'err' ? 'err' : 'ok' %>"><%= flash.message %></div>
+    <% } %>
+
+    <%- body %>
+
+    <div class="footer">© <%= new Date().getFullYear() %> <%= appName %> <span class="muted">v<%= appVersion %></span>. Destek: <%= supportEmail %></div>
+  </div>
+
+  <script src="/public/app.js?v=<%= appVersion %>"></script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+<div class="grid two">
+  <div class="card">
+    <h2>Yedek kodlar</h2>
+    <p class="p">Telefonunu kaybedersen veya doğrulayıcı uygulama erişimini yitirirsen, bu kodlarla giriş yapabilirsin.
+      Her kod <b>tek kullanımlık</b>tır.</p>
+
+    <div class="code" style="font-size:14px; user-select:all">
+      <% for (const c of backupCodes) { %>
+        <div><%= c %></div>
+      <% } %>
+    </div>
+
+    <form method="post" action="/mfa/done" style="margin-top:16px">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="btn primary" type="submit">Kaydettim, devam et</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Öneri</h2>
+    <ul class="p" style="margin:0; padding-left:18px">
+      <li>Bu kodları bir parola yöneticisine ekle (1Password / Bitwarden vb.)</li>
+      <li>Tekrar ekran görüntüsü alma; cihazın fotoğraflar yedeği riskli olabilir.</li>
+      <li>Şüpheli bir durumda hemen yedek kodları yenile ve parolanı değiştir.</li>
+    </ul>
+  </div>
+</div>

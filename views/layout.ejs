@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="<%= (typeof lang !== 'undefined' && lang) ? lang : 'tr' %>">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title><%= title %> — <%= appName %></title>
+  <link rel="icon" type="image/svg+xml" href="/public/favicon.svg?v=<%= appVersion %>" />
+  <!-- Cache-buster so browser updates CSS/JS immediately after an upgrade -->
+  <link rel="stylesheet" href="/public/styles.css?v=<%= appVersion %>" />
+  <% if (typeof noindex !== 'undefined' && noindex) { %><meta name="robots" content="noindex,nofollow" /><% } %>
+</head>
+<body>
+  <div class="container">
+    <div class="nav">
+      <div class="brand">
+        <div class="logoBox">D</div>
+        <div><%= appName %></div>
+        <% if (typeof tenant !== 'undefined' && tenant) { %><span class="badge"><%= tenant.name %></span><% } %>
+        <% if (typeof plan !== 'undefined' && plan) { %><span class="badge">Plan: <%= plan.label %></span><% } %>
+      </div>
+      <div class="navlinks">
+        <% if (typeof user !== 'undefined' && user) { %>
+  <a href="/app/dashboard">Panel</a>
+  <a href="/app/requests">Talepler</a>
+  <a href="/app/requests/new">+ Yeni</a>
+  <% if (user.role === 'owner') { %>
+    <a href="/app/team">Ekip</a>
+    <a href="/app/templates">Şablonlar</a>
+    <a href="/app/reports">Raporlar</a>
+    <a href="/app/billing">Ödeme</a>
+  <% } %>
+  <a href="/app/activity">Aktivite</a>
+  <a href="/app/notifications" style="position:relative;">
+    🔔<% if (typeof notifCount !== 'undefined' && notifCount > 0) { %><span style="position:absolute;top:-6px;right:-10px;background:#ef4444;color:#fff;font-size:0.65em;padding:1px 5px;border-radius:99px;font-weight:700;"><%= notifCount > 99 ? '99+' : notifCount %></span><% } %>
+  </a>
+  <a href="/app/settings">Ayarlar</a>
+  <form method="post" action="/logout" style="display:inline;">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button class="btn" type="submit">Çıkış</button>
+  </form>
+<% } else { %>
+  <a href="/login">Giriş</a>
+  <a class="btn primary" href="/signup">Kayıt</a>
+<% } %>
+      </div>
+    </div>
+
+    <% if (typeof flash !== 'undefined' && flash && flash.message) { %>
+      <div class="flash <%= flash.type === 'err' ? 'err' : 'ok' %>"><%= flash.message %></div>
+    <% } %>
+
+    <%- body %>
+
+    <div class="footer">
+      © <%= new Date().getFullYear() %> <%= appName %> <span class="muted">v<%= appVersion %></span>. Destek: <%= supportEmail %>
+      <% if (typeof user !== 'undefined' && user) { %>
+        <span style="margin-left:12px;">
+          <form method="post" action="/app/set-lang" style="display:inline;">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <input type="hidden" name="returnTo" value="<%= typeof title !== 'undefined' ? '' : '/app/dashboard' %>">
+            <select name="lang" onchange="this.form.submit()" style="font-size:0.8em;padding:2px 4px;">
+              <option value="tr" <%= (typeof lang !== 'undefined' && lang === 'tr') || typeof lang === 'undefined' ? 'selected' : '' %>>Türkçe</option>
+              <option value="en" <%= typeof lang !== 'undefined' && lang === 'en' ? 'selected' : '' %>>English</option>
+            </select>
+          </form>
+        </span>
+      <% } %>
+    </div>
+  </div>
+
+  <script src="/public/app.js?v=<%= appVersion %>"></script>
+</body>
+</html>
