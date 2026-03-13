@@ -37,6 +37,7 @@ const {
 } = require('./lib/mfa');
 const { t, getLocale, LANGUAGES } = require('./lib/i18n');
 const { addNotification, getUnreadCount, getNotifications, markAsRead, markAllAsRead, deleteOldNotifications } = require('./lib/notifications');
+const emailTemplates = require('./lib/emailTemplates');
 
 
 
@@ -75,7 +76,6 @@ const FORCE_HTTPS = String(process.env.FORCE_HTTPS || (IS_PROD ? '1' : '0')) ===
 const COOKIE_SECURE = String(process.env.COOKIE_SECURE || (IS_PROD ? '1' : '0')) === '1';
 const COOKIE_DOMAIN = (process.env.COOKIE_DOMAIN || '').trim();
 const ENABLE_CSV_EXPORT = String(process.env.ENABLE_CSV_EXPORT || '0') === '1';
-const ENABLE_LAUNCH_CENTER = String(process.env.ENABLE_LAUNCH_CENTER || '0') === '1';
 const COOKIE_SAMESITE = (process.env.COOKIE_SAMESITE || 'lax').trim();
 
 const APP_NAME = process.env.APP_NAME || 'Dökümanlarım';
@@ -1694,9 +1694,7 @@ app.post('/verify-email/resend', noStore, requireAuthLoose, loginLimiter, verify
   });
 
   const link = buildVerifyEmailLink(req, token);
-  const subject = `${APP_NAME}: E-postanı doğrula`;
-  const text = `Merhaba ${req.user.firstName || ''},\n\nHesabını doğrulamak için: ${link}\n\nBu link ${EMAIL_VERIFY_TTL_HOURS} saat geçerlidir.`;
-  const html = `<p>Merhaba ${escapeHtml(req.user.firstName || '')},</p><p>Hesabını doğrulamak için:</p><p><a href="${link}">${link}</a></p><p>Bu link <b>${EMAIL_VERIFY_TTL_HOURS} saat</b> geçerlidir.</p>`;
+  const { subject, text, html } = emailTemplates.verifyEmail({ appName: APP_NAME, firstName: req.user.firstName, link, ttlHours: EMAIL_VERIFY_TTL_HOURS });
   const mailRes = await sendSystemEmail({ to: req.user.email, subject, text, html });
   if (!mailRes.ok && !IS_PROD) req.session.devVerifyLink = link;
 
@@ -1776,9 +1774,7 @@ app.post('/forgot-password', noStore, loginLimiter, verifyCsrf, async (req, res)
 
   if (found.ok) {
     const link = buildResetPasswordLink(req, token);
-    const subject = `${APP_NAME}: Şifre sıfırlama`;
-    const text = `Şifre sıfırlama linki: ${link}\n\nBu link ${PASSWORD_RESET_TTL_MINUTES} dakika geçerlidir.`;
-    const html = `<p>Şifreni sıfırlamak için aşağıdaki linki kullan:</p><p><a href="${link}">${link}</a></p><p>Bu link <b>${PASSWORD_RESET_TTL_MINUTES} dakika</b> geçerlidir.</p>`;
+    const { subject, text, html } = emailTemplates.resetPassword({ appName: APP_NAME, link, ttlMinutes: PASSWORD_RESET_TTL_MINUTES });
     const mailRes = await sendSystemEmail({ to: email, subject, text, html });
     if (!mailRes.ok && !IS_PROD) {
       req.session.devResetLink = link;
@@ -2328,18 +2324,12 @@ app.post('/v/:token/participants/invite', vendorLimiter, loadVendorRequest, veri
 
   if (mailer && email) {
     try {
+      const tpl = emailTemplates.participantInvite({ name, role, vendorName: reqItem.vendor.name, link, canSubmit });
       await mailer.sendMail({
         from: process.env.SMTP_FROM || `${APP_NAME} <noreply@example.com>`,
         to: email,
-        subject: `Belge yükleme daveti (${role.replace('_',' ')}) — ${reqItem.vendor.name}`,
-        text: `Merhaba${name ? ' ' + name : ''},
-
-Bu link ile belge yükleyebilirsiniz:
-${link}
-
-Not: ${canSubmit ? 'Bu link ile belgeleri gönderebilirsiniz (Yetkili).' : 'Bu link ile sadece belge yükleyebilirsiniz. “Gönder” için yetkili linki gerekir.'}
-
-`,
+        subject: tpl.subject,
+        text: tpl.text,
       });
     } catch (e) {
       console.warn('vendor participant email failed', e.message);
@@ -2396,17 +2386,12 @@ app.post('/v/:token/submit', vendorLimiter, loadVendorRequest, verifyCsrf, async
 
   if (mailer && toList.length) {
     try {
+      const tpl = emailTemplates.vendorSubmitted({ tenantName: (dbNow.tenants.find(t => t.id === updated.tenantId)?.name) || '', reqItem: updated, baseUrl: getBaseUrl(req) });
       await mailer.sendMail({
         from: process.env.SMTP_FROM || `${APP_NAME} <noreply@example.com>`,
         to: toList.join(','),
-        subject: `Tedarikçi belgeleri gönderdi: ${updated.vendor.name}`,
-        text: `Şirket: ${(dbNow.tenants.find(t => t.id === updated.tenantId)?.name) || ''}
-Talep: ${updated.id}
-Durum: Gönderildi
-Gönderen: ${updated.submittedBy?.role || 'vendor'} ${updated.submittedBy?.email || ''}
-
-Panel: ${getBaseUrl(req)}/app/requests/${updated.id}
-`,
+        subject: tpl.subject,
+        text: tpl.text,
       });
     } catch (e) {
       console.warn('notify mail failed', e.message);
@@ -3287,11 +3272,12 @@ app.post('/app/team/invite', requireAuth, requireOwner, verifyCsrf, async (req, 
   const mailer = getMailer();
   if (mailer) {
     try {
+      const tpl = emailTemplates.teamInvite({ appName: APP_NAME, tenantName: req.tenant.name, link });
       await mailer.sendMail({
         from: process.env.SMTP_FROM || `${APP_NAME} <noreply@example.com>`,
         to: email,
-        subject: `Davet — ${req.tenant.name}`,
-        text: `Merhaba,\n\n${req.tenant.name} şirketi sizi ${APP_NAME} uygulamasına davet etti.\n\nDavet linki:\n${link}\n\nBu link 14 gün geçerlidir.\n`,
+        subject: tpl.subject,
+        text: tpl.text,
       });
       flash(req, 'ok', 'Davet e-postası gönderildi.');
       return res.redirect('/app/team');
@@ -3764,52 +3750,7 @@ app.get('/app/requests/:id', requireAuth, noStore, (req, res) => {
   });
 });
 
-function buildVendorInviteEmailText(tenant, reqItem, vendorLink) {
-  const lines = [];
-  lines.push(`Merhaba ${reqItem.vendor.name || ''},`);
-  lines.push('');
-  lines.push(`${tenant.name} adına sizden aşağıdaki belgeleri yüklemenizi rica ediyoruz.`);
-  if (reqItem.dueDate) lines.push(`Son tarih: ${reqItem.dueDate}`);
-  lines.push('');
-  lines.push('Belge listesi:');
-  for (const d of reqItem.docs || []) {
-    lines.push(`- ${d.label}${d.required ? ' (zorunlu)' : ''}`);
-  }
-  if (reqItem.vendorMessage) {
-    lines.push('');
-    lines.push('Not:');
-    lines.push(reqItem.vendorMessage);
-  }
-  lines.push('');
-  lines.push('Yükleme linki:');
-  lines.push(vendorLink);
-  lines.push('');
-  lines.push('Teşekkürler.');
-  return lines.join('\n');
-}
-
-function buildVendorReminderEmailText(tenant, reqItem, vendorLink) {
-  const uploads = reqItem.uploads || {};
-  const missingRequired = (reqItem.docs || []).filter(d => d.required && !uploads[d.id]);
-  const lines = [];
-  lines.push(`Merhaba ${reqItem.vendor.name || ''},`);
-  lines.push('');
-  lines.push(`${tenant.name} belge talebiniz için hatırlatma.`);
-  if (reqItem.dueDate) lines.push(`Son tarih: ${reqItem.dueDate}`);
-  lines.push('');
-  if (missingRequired.length) {
-    lines.push('Eksik zorunlu belgeler:');
-    for (const d of missingRequired) lines.push(`- ${d.label}`);
-  } else {
-    lines.push('Zorunlu belgeler tamam görünüyor.');
-  }
-  lines.push('');
-  lines.push('Yükleme linki:');
-  lines.push(vendorLink);
-  lines.push('');
-  lines.push('Teşekkürler.');
-  return lines.join('\n');
-}
+// E-posta şablonları lib/emailTemplates.js'e taşındı.
 
 // Vendor email actions
 app.post('/app/requests/:id/email/invite', requireAuth, verifyCsrf, async (req, res) => {
@@ -3839,11 +3780,12 @@ app.post('/app/requests/:id/email/invite', requireAuth, verifyCsrf, async (req, 
   const tenant = db.tenants.find(t => t.id === req.tenant.id) || req.tenant;
 
   try {
+    const tpl = emailTemplates.vendorInvite({ tenantName: tenant.name, reqItem: r, vendorLink });
     await mailer.sendMail({
       from: process.env.SMTP_FROM || `${APP_NAME} <noreply@example.com>`,
       to,
-      subject: `Belge Talebi — ${tenant.name}`,
-      text: buildVendorInviteEmailText(tenant, r, vendorLink),
+      subject: tpl.subject,
+      text: tpl.text,
     });
 
     withDB(db2 => {
@@ -3899,11 +3841,12 @@ app.post('/app/requests/:id/email/remind', requireAuth, verifyCsrf, async (req, 
   const tenant = db.tenants.find(t => t.id === req.tenant.id) || req.tenant;
 
   try {
+    const tplR = emailTemplates.vendorReminder({ tenantName: tenant.name, reqItem: r, vendorLink });
     await mailer.sendMail({
       from: process.env.SMTP_FROM || `${APP_NAME} <noreply@example.com>`,
       to,
-      subject: `Hatırlatma — ${tenant.name}`,
-      text: buildVendorReminderEmailText(tenant, r, vendorLink),
+      subject: tplR.subject,
+      text: tplR.text,
     });
 
     withDB(db2 => {
@@ -3994,18 +3937,12 @@ app.post('/app/requests/:id/participants', requireAuth, verifyCsrf, async (req, 
   const mailer = getMailer();
   if (mailer && email) {
     try {
+      const tplP = emailTemplates.participantLink({ name, role, vendorName: r.vendor.name, link, canSubmit });
       await mailer.sendMail({
         from: process.env.SMTP_FROM || `${APP_NAME} <noreply@example.com>`,
         to: email,
-        subject: `Belge yükleme linki (${role.replace('_',' ')}) — ${r.vendor.name}`,
-        text: `Merhaba${name ? ' ' + name : ''},
-
-Bu link ile belge yükleyebilirsiniz:
-${link}
-
-Not: ${canSubmit ? 'Bu link ile belgeleri gönderebilirsiniz (Yetkili).' : 'Bu link ile sadece belge yükleyebilirsiniz. “Gönder” için yetkili linki gerekir.'}
-
-`,
+        subject: tplP.subject,
+        text: tplP.text,
       });
     } catch (e) {
       console.warn('participant add email failed', e.message);
@@ -4036,18 +3973,12 @@ app.post('/app/requests/:id/participants/:pid/email', requireAuth, verifyCsrf, a
   const link = `${getBaseUrl(req)}/v/${p.token}`;
 
   try {
+    const tplPR = emailTemplates.participantLink({ name: p.name, role: p.role, vendorName: r.vendor.name, link, canSubmit: p.canSubmit });
     await mailer.sendMail({
       from: process.env.SMTP_FROM || `${APP_NAME} <noreply@example.com>`,
       to: p.email,
-      subject: `Belge yükleme linki (${(p.role || '').replace('_',' ')}) — ${r.vendor.name}`,
-      text: `Merhaba${p.name ? ' ' + p.name : ''},
-
-Bu link ile belge yükleyebilirsiniz:
-${link}
-
-Not: ${p.canSubmit ? 'Bu link ile belgeleri gönderebilirsiniz (Yetkili).' : 'Bu link ile sadece belge yükleyebilirsiniz. “Gönder” için yetkili linki gerekir.'}
-
-`,
+      subject: tplPR.subject,
+      text: tplPR.text,
     });
 
     withDB(db2 => {
@@ -4678,156 +4609,13 @@ app.get('/app/security', requireAuth, noStore, (req, res) => {
 });
 
 
-// --- Launch Center (Owner) ---
-// Public launch öncesi “hazır mıyız?” kontrol ekranı.
-// Not: Bu ekran sadece Owner erişebilir.
-
-function deriveEmailDomain(addr) {
-  const s = String(addr || '').trim();
-  const m = s.match(/@([^>\s]+)/);
-  return m ? m[1].toLowerCase() : '';
-}
-
-function withTimeout(promise, ms) {
-  let t;
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => {
-      t = setTimeout(() => reject(new Error('timeout')), ms);
-    })
-  ]).finally(() => clearTimeout(t));
-}
-
-async function resolveTxt(name) {
-  try {
-    const rows = await withTimeout(dns.promises.resolveTxt(name), 1800);
-    const flat = [];
-    for (const row of rows || []) {
-      flat.push((row || []).join(''));
-    }
-    return { ok: true, rows: flat };
-  } catch (e) {
-    return { ok: false, error: e.message || String(e) };
-  }
-}
-
-async function buildLaunchReport(req) {
-  const db = readDB();
-  const plan = getPlanForTenant(db, req.tenant.id);
-
-  const proto = (req.headers['x-forwarded-proto'] || req.protocol || 'http').toString();
-  const isHttps = proto === 'https';
-  const baseUrlComputed = getBaseUrl(req);
-  const baseUrlEnv = (process.env.BASE_URL || '').trim();
-
-  const sessionRaw = (process.env.SESSION_SECRETS || process.env.SESSION_SECRET || '').trim();
-  const sessionKeys = sessionRaw.split(',').map(s => s.trim()).filter(Boolean);
-
-  const smtpHost = (process.env.SMTP_HOST || '').trim();
-  const smtpFrom = (process.env.SMTP_FROM || '').trim();
-
-  const mailDomain = (process.env.MAIL_DOMAIN || '').trim().toLowerCase() || deriveEmailDomain(smtpFrom) || deriveEmailDomain(SUPPORT_EMAIL);
-
-  const spf = mailDomain ? await resolveTxt(mailDomain) : { ok: false, error: 'domain_missing' };
-  const dmarc = mailDomain ? await resolveTxt(`_dmarc.${mailDomain}`) : { ok: false, error: 'domain_missing' };
-
-  const spfRecord = (spf.ok ? (spf.rows || []).find(x => /\bv=spf1\b/i.test(x)) : null);
-  const dmarcRecord = (dmarc.ok ? (dmarc.rows || []).find(x => /\bv=DMARC1\b/i.test(x)) : null);
-
-  const behindCloudflare = Boolean(req.headers['cf-ray'] || req.headers['cf-connecting-ip'] || req.headers['cf-ipcountry']);
-
-  // Storage hint
-  const storageProvider = (process.env.STORAGE_PROVIDER || 'local').trim();
-  const isS3 = storageProvider === 's3';
-
-  // Logs
-  const securityLogPath = path.join(__dirname, 'data', 'security.log');
-  const accessLogPath = path.join(__dirname, 'data', 'access.log');
-  const securityLogExists = fs.existsSync(securityLogPath);
-  const accessLogExists = fs.existsSync(accessLogPath);
-
-  const report = {
-    app: { name: APP_NAME, version: APP_VERSION, nodeEnv: NODE_ENV, isProd: IS_PROD },
-    request: { host: req.get('host'), proto, isHttps, baseUrlComputed, baseUrlEnv },
-    security: {
-      trustProxy: TRUST_PROXY,
-      forceHttps: FORCE_HTTPS,
-      cookieSecure: COOKIE_SECURE,
-      cspEnabled: CSP_ENABLED,
-      cspReportOnly: CSP_REPORT_ONLY,
-      globalRateLimitMax: GLOBAL_RATE_LIMIT_MAX,
-      loginLockMaxFails: LOGIN_LOCK_MAX_FAILS,
-      loginLockMinutes: LOGIN_LOCK_MINUTES,
-      emailVerificationRequired: isEmailVerificationRequired(),
-      turnstileEnabled: isTurnstileEnabled(),
-      securityAlertWebhook: Boolean((process.env.SECURITY_ALERT_WEBHOOK_URL || '').trim()),
-      behindCloudflare,
-    },
-    sessions: {
-      keysCount: sessionKeys.length,
-      primaryKeyLength: (sessionKeys[0] || '').length,
-    },
-    email: {
-      enabled: !!getMailer(),
-      smtpHost: smtpHost || null,
-      smtpFrom: smtpFrom || null,
-      supportEmail: SUPPORT_EMAIL,
-      mailDomain: mailDomain || null,
-      spf: { ok: Boolean(spfRecord), record: spfRecord || null, rawOk: spf.ok, error: spf.ok ? null : spf.error },
-      dmarc: { ok: Boolean(dmarcRecord), record: dmarcRecord || null, rawOk: dmarc.ok, error: dmarc.ok ? null : dmarc.error },
-    },
-    storage: {
-      provider: storageProvider,
-      s3Configured: isS3 ? Boolean((process.env.S3_BUCKET || '').trim()) : null,
-      hint: isS3 ? 'S3/R2 private bucket önerilir' : 'Local disk ise backup/restore ve disk doluluk alarmı şart',
-    },
-    logs: {
-      securityLogExists,
-      accessLogExists,
-      paths: {
-        securityLog: securityLogExists ? securityLogPath : null,
-        accessLog: accessLogExists ? accessLogPath : null,
-      }
-    },
-    legal: {
-      privacyUrl: `${baseUrlComputed}/legal/privacy`,
-      termsUrl: `${baseUrlComputed}/legal/terms`,
-      securityTxtUrl: `${baseUrlComputed}/.well-known/security.txt`,
-    },
-    plan: { code: plan.code, label: plan.label },
-  };
-
-  // Derived “gate” signals
-  report.gates = {
-    httpsOk: !IS_PROD || isHttps,
-    baseUrlOk: !IS_PROD || (baseUrlEnv && baseUrlEnv.startsWith('https://')),
-    sessionOk: (sessionKeys[0] || '').length >= 24,
-    sessionRotationRecommended: sessionKeys.length >= 2,
-    smtpOk: !IS_PROD || !!getMailer(),
-    spfOk: !IS_PROD || Boolean(spfRecord),
-    dmarcOk: !IS_PROD || Boolean(dmarcRecord),
-  };
-
-  return report;
-}
-
-app.get('/app/launch', requireAuth, requireOwner, noStore, async (req, res) => {
-  flash(req, 'ok', 'Launch kontrol ekranı kaldırıldı. İlgili ayarlar Ayarlar sayfasında.');
+// --- Launch Center (removed) ---
+// Eski launch center kaldırıldı. Bookmark'lar için yönlendirme korunuyor.
+app.get('/app/launch', requireAuth, requireOwner, noStore, (req, res) => {
   return res.redirect('/app/settings');
 });
-
-app.get('/app/launch/report.json', requireAuth, requireOwner, noStore, async (req, res) => {
+app.get('/app/launch/report.json', requireAuth, requireOwner, noStore, (req, res) => {
   return res.status(404).json({ ok: false, error: 'Not Found' });
-});
-
-app.post('/app/launch/test-email', requireAuth, requireOwner, emailTestLimiter, verifyCsrf, async (req, res) => {
-  flash(req, 'err', 'Launch kontrol kaldırıldı. SMTP testi için Ayarlar veya CLI kullanın.');
-  return res.redirect('/app/settings');
-});
-
-app.post('/app/launch/test-alert', requireAuth, requireOwner, emailTestLimiter, verifyCsrf, async (req, res) => {
-  flash(req, 'err', 'Launch kontrol kaldırıldı. Webhook testi için Ayarlar veya CLI kullanın.');
-  return res.redirect('/app/settings');
 });
 app.post('/app/security/mfa/start', requireAuth, verifyCsrf, (req, res) => {
   // Start MFA setup while logged in
@@ -5115,11 +4903,12 @@ async function runReminderJob() {
 
         const vendorLink = `${baseUrl.replace(/\/$/, '')}/v/${r.token}`;
         try {
+          const tplCron = emailTemplates.vendorReminder({ tenantName: tenant.name, reqItem: r, vendorLink });
           await mailer.sendMail({
             from: process.env.SMTP_FROM || `${APP_NAME} <noreply@example.com>`,
             to: (r.vendor.email || '').trim(),
-            subject: `Hatırlatma — ${tenant.name}`,
-            text: buildVendorReminderEmailText(tenant, r, vendorLink),
+            subject: tplCron.subject,
+            text: tplCron.text,
           });
           updates.push({ tenantId: tenant.id, requestId: r.id, daysLeft, to: (r.vendor.email || '').trim() });
         } catch (e) {
