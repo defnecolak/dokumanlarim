@@ -1122,6 +1122,8 @@ app.get('/login', noStore, (req, res) => {
 app.post('/login', noStore, loginLimiter, verifyCsrf, async (req, res) => {
   const email = (req.body.email || '').trim().toLowerCase();
   const password = String(req.body.password || '');
+  const rememberMe = req.body.remember === '1';
+  const savedReturnTo = req.session.returnTo || null;
   const db = readDB();
   const user = db.users.find(u => u.email === email);
   // Timing noise: if user doesn't exist, still run bcrypt to reduce enumeration via timing.
@@ -1215,9 +1217,7 @@ app.post('/login', noStore, loginLimiter, verifyCsrf, async (req, res) => {
     });
 
     const link = buildVerifyEmailLink(req, token);
-    const subject = `${APP_NAME}: E-postanı doğrula`;
-    const text = `Merhaba ${user.firstName || ''},\n\nHesabını doğrulamak için: ${link}\n\nBu link ${EMAIL_VERIFY_TTL_HOURS} saat geçerlidir.`;
-    const html = `<p>Merhaba ${escapeHtml(user.firstName || '')},</p><p>Hesabını doğrulamak için aşağıdaki linke tıkla:</p><p><a href="${link}">${link}</a></p><p>Bu link <b>${EMAIL_VERIFY_TTL_HOURS} saat</b> geçerlidir.</p>`;
+    const { subject, text, html } = emailTemplates.verifyEmail({ appName: APP_NAME, firstName: user.firstName, link, ttlHours: EMAIL_VERIFY_TTL_HOURS });
     const mailRes = await sendSystemEmail({ to: user.email, subject, text, html });
     if (!mailRes.ok && !IS_PROD) {
       req.session.devVerifyLink = link;
@@ -1227,6 +1227,13 @@ app.post('/login', noStore, loginLimiter, verifyCsrf, async (req, res) => {
     return res.redirect('/verify-needed');
   }
 
+  // "Beni hatırla" seçiliyse session süresini 30 güne uzat
+  if (rememberMe) {
+    req.session.maxAge = 1000 * 60 * 60 * 24 * 30; // 30 gün
+  }
+
+  const loginRedirect = safeRedirectUrl(savedReturnTo) || '/app/requests';
+
   // MFA (TOTP) – en yüksek kaldıraç güvenlik katmanı
   const tenant = db.tenants.find(t => t.id === user.tenantId) || null;
   const tenantRequiresMfa = !!(tenant && tenant.security && tenant.security.requireMfa);
@@ -1235,22 +1242,23 @@ app.post('/login', noStore, loginLimiter, verifyCsrf, async (req, res) => {
   if (tenantRequiresMfa && !user.mfaEnabled) {
     req.session.mfaPendingUserId = user.id;
     req.session.mfaSetupRequired = true;
-    req.session.postLoginRedirect = '/app/requests';
+    req.session.postLoginRedirect = loginRedirect;
     flash(req, 'err', 'Güvenlik için MFA zorunlu. Devam etmek için MFA kurulumunu tamamla.');
     return res.redirect('/mfa/setup');
   }
 
   if (user.mfaEnabled) {
     req.session.mfaPendingUserId = user.id;
-    req.session.postLoginRedirect = '/app/requests';
+    req.session.postLoginRedirect = loginRedirect;
     flash(req, 'ok', 'Giriş başarılı. MFA kodunu gir.');
     return res.redirect('/mfa');
   }
 
   req.session.userId = user.id;
+  req.session.returnTo = null;
   stampSession(req);
   flash(req, 'ok', 'Giriş başarılı.');
-  return res.redirect('/app/requests');
+  return res.redirect(loginRedirect);
 });
 
 // ----------------------------
@@ -1374,6 +1382,7 @@ app.post('/mfa', noStore, mfaLimiter, verifyCsrf, (req, res) => {
 
   const redirectTo = req.session.postLoginRedirect || '/app/requests';
   req.session.postLoginRedirect = null;
+  req.session.returnTo = null;
   flash(req, 'ok', 'MFA doğrulandı.');
   return res.redirect(redirectTo);
 });
@@ -1632,9 +1641,7 @@ app.post('/signup', noStore, signupLimiter, verifyCsrf, async (req, res) => {
 
     if (needsVerify) {
       const link = buildVerifyEmailLink(req, verifyToken);
-      const subject = `${APP_NAME}: E-postanı doğrula`;
-      const text = `Merhaba ${firstName},\n\nHesabını doğrulamak için: ${link}\n\nBu link ${EMAIL_VERIFY_TTL_HOURS} saat geçerlidir.\n\n— ${APP_NAME}`;
-      const html = `<p>Merhaba ${escapeHtml(firstName)},</p><p>Hesabını doğrulamak için aşağıdaki linke tıkla:</p><p><a href="${link}">${link}</a></p><p>Bu link <b>${EMAIL_VERIFY_TTL_HOURS} saat</b> geçerlidir.</p><p>— ${escapeHtml(APP_NAME)}</p>`;
+      const { subject, text, html } = emailTemplates.verifyEmail({ appName: APP_NAME, firstName, link, ttlHours: EMAIL_VERIFY_TTL_HOURS });
       const mailRes = await sendSystemEmail({ to: email, subject, text, html });
       if (!mailRes.ok && !IS_PROD) req.session.devVerifyLink = link;
       flash(req, 'ok', 'Hesap oluşturuldu. E-posta doğrulama linki gönderildi.');
